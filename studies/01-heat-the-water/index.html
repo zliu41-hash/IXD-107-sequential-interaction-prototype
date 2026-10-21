@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Heat the Water</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one 390×844 phone frame, centred and scaled to fit; everything inside is one SVG. Single grayscale look on purpose. */
+:root{
+  --room:#cfcfcf; --screen:#f1f1f1; --ink:#1b1b1b; --mid:#7d7d7d; --soft:#bdbdbd; --faint:#e2e2e2;
+  --ui:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--room);color:var(--ink);display:flex;align-items:center;justify-content:center;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));box-sizing:border-box;overflow:hidden}
+.phone{height:min(844px, calc(100% - 24px));aspect-ratio:390/844;max-width:100%;background:var(--screen);border-radius:36px;overflow:hidden;box-shadow:0 0 0 1px var(--soft)}
+svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;font-family:var(--ui)}
+.hit{cursor:pointer;outline:none}
+.hit:focus-visible .focus{stroke:var(--ink);stroke-dasharray:4 4}
+@media (max-width:430px){ .phone{border-radius:0;box-shadow:none;height:100%} body{padding-left:0;padding-right:0} }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+</head>
+<body>
+
+<div class="phone">
+<svg id="s" viewBox="0 0 390 844" aria-label="Interaction study: press and hold the kettle to heat the water">
+  <text x="28" y="66" font-size="12" fill="var(--mid)" letter-spacing="1.2">GONGFU TEA · 1 / 3</text>
+  <text x="28" y="88" font-size="17" fill="var(--ink)" font-weight="500">Heat the water</text>
+  <g id="reset" class="hit" tabindex="0" role="button" aria-label="Reset">
+    <circle class="focus" cx="352" cy="74" r="20" fill="var(--faint)" stroke="none"/>
+    <path d="M361 74a9 9 0 1 1-3-6.7" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M358.5 62.5v5.5h-5.5" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- thermometer -->
+  <g id="thermo">
+    <rect x="312" y="250" width="20" height="390" rx="10" fill="var(--faint)" stroke="var(--soft)"/>
+    <circle cx="322" cy="662" r="20" fill="var(--faint)" stroke="var(--soft)"/>
+    <rect id="merc" x="317" y="600" width="10" height="60" rx="5" fill="var(--ink)"/>
+    <circle cx="322" cy="662" r="13" fill="var(--ink)"/>
+    <g id="ticks"></g>
+    <rect id="band" x="300" y="0" width="44" height="0" rx="4" fill="none" stroke="var(--ink)" stroke-width="2"/>
+    <text id="bandLbl" x="296" y="0" font-size="11" fill="var(--mid)" text-anchor="end">90–95°</text>
+    <text id="readout" x="322" y="712" font-size="15" fill="var(--ink)" text-anchor="middle" font-weight="500" style="font-variant-numeric:tabular-nums">20°</text>
+  </g>
+
+  <!-- steam -->
+  <g id="steam" fill="none" stroke="var(--mid)" stroke-width="3" stroke-linecap="round" opacity="0">
+    <path id="st0" d=""/><path id="st1" d=""/><path id="st2" d=""/>
+  </g>
+
+  <!-- kettle + heater: the press target -->
+  <g id="kettleHit" class="hit" tabindex="0" role="button" aria-label="Kettle. Press and hold to heat.">
+    <circle id="cue" cx="160" cy="470" r="110" fill="none" stroke="var(--soft)" stroke-width="2" opacity="0"/>
+    <rect class="focus" x="40" y="300" width="240" height="300" rx="24" fill="transparent" stroke="none"/>
+    <g id="kettle">
+      <path d="M110 330 q50 -46 100 0" fill="none" stroke="var(--ink)" stroke-width="10" stroke-linecap="round"/>
+      <path d="M96 380 L72 352 L60 356 L86 404 Z" fill="var(--ink)"/>
+      <rect x="96" y="352" width="128" height="160" rx="34" fill="var(--screen)" stroke="var(--ink)" stroke-width="5"/>
+      <rect x="138" y="342" width="44" height="12" rx="6" fill="var(--ink)"/>
+      <rect id="water" x="104" y="420" width="112" height="84" rx="12" fill="var(--faint)"/>
+      <g id="bubbles" fill="var(--screen)" stroke="var(--mid)" stroke-width="1.5"></g>
+    </g>
+    <rect x="80" y="524" width="160" height="22" rx="8" fill="var(--soft)"/>
+    <g id="coil" fill="none" stroke-width="4" stroke-linecap="round">
+      <path d="M100 535 h120" stroke="var(--mid)"/>
+    </g>
+    <circle id="press" cx="160" cy="470" r="0" fill="var(--ink)" opacity=".08"/>
+  </g>
+
+  <!-- completion mark -->
+  <g id="done" opacity="0">
+    <circle cx="160" cy="610" r="22" fill="var(--ink)"/>
+    <path d="M150 610 l7 7 l13 -14" fill="none" stroke="var(--screen)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g id="hot" opacity="0">
+    <circle cx="322" cy="226" r="12" fill="var(--ink)"/>
+    <path d="M317 221 l10 10 M327 221 l-10 10" stroke="var(--screen)" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const T0 = 20, TMAX = 110, Y_TOP = 262, Y_BOT = 640;
+const BAND = [90, 95];
+const yOf = t => Y_BOT - (t - T0) / (TMAX - T0) * (Y_BOT - Y_TOP);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ticks every 10°
+let tk = '';
+for (let t = 20; t <= 110; t += 10) {
+  const y = yOf(t);
+  tk += `<line x1="334" x2="${t % 20 === 0 ? 346 : 341}" y1="${y}" y2="${y}" stroke="var(--soft)" stroke-width="2"/>`;
+  if (t % 20 === 0) tk += `<text x="352" y="${y + 4}" font-size="10" fill="var(--mid)">${t}</text>`;
+}
+$('ticks').innerHTML = tk;
+$('band').setAttribute('y', yOf(BAND[1]) - 3);
+$('band').setAttribute('height', yOf(BAND[0]) - yOf(BAND[1]) + 6);
+$('bandLbl').setAttribute('y', (yOf(BAND[0]) + yOf(BAND[1])) / 2 + 4);
+
+let S;
+function reset() {
+  S = { temp: T0, power: 0, holding: false, done: false, settle: 0, t: 0, pressR: 0, bub: [] };
+  $('done').setAttribute('opacity', 0);
+  $('band').setAttribute('fill', 'none');
+}
+reset();
+
+const hit = $('kettleHit');
+const down = e => { if (S.done) return; S.holding = true; if (e.pointerId !== undefined) hit.setPointerCapture(e.pointerId); };
+const up = () => { S.holding = false; };
+hit.addEventListener('pointerdown', down);
+hit.addEventListener('pointerup', up);
+hit.addEventListener('pointercancel', up);
+hit.addEventListener('lostpointercapture', up);
+hit.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); down(e); } });
+hit.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') up(); });
+hit.addEventListener('contextmenu', e => e.preventDefault());
+$('reset').addEventListener('click', reset);
+$('reset').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); reset(); } });
+
+function steamPath(x, phase, h) {
+  let d = `M${x} 318`;
+  for (let i = 1; i <= 6; i++) {
+    const y = 318 - i * h / 6;
+    d += ` L${x + Math.sin(phase + i * 0.9) * 6} ${y}`;
+  }
+  return d;
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; S.t += dt;
+  // heater power ramps (thermal inertia): water keeps rising briefly after release
+  S.power += ((S.holding ? 1 : 0) - S.power) * Math.min(1, dt * 3.2);
+  const rate = 9 + 0.16 * (S.temp - T0);            // °C per second at full power
+  S.temp += S.power * rate * dt;
+  const cool = S.temp > 96 ? 2.2 : 0.6;              // overshoot cools faster, so waiting is a fix
+  if (!S.holding && !S.done) S.temp -= cool * dt * (1 - S.power);
+  S.temp = Math.max(T0, Math.min(TMAX, S.temp));
+
+  const inBand = S.temp >= BAND[0] && S.temp <= BAND[1];
+  if (!S.done && !S.holding && S.power < 0.15 && inBand) { S.settle += dt; if (S.settle > 0.8) { S.done = true; } }
+  else if (!S.done) S.settle = 0;
+
+  // thermometer
+  const y = yOf(S.temp);
+  $('merc').setAttribute('y', y); $('merc').setAttribute('height', 662 - y);
+  $('readout').textContent = Math.round(S.temp) + '°';
+  $('band').setAttribute('fill', S.done ? 'var(--ink)' : (inBand ? 'var(--faint)' : 'none'));
+  $('band').setAttribute('fill-opacity', S.done ? .18 : 1);
+  const tooHot = S.temp > 100;
+  $('hot').setAttribute('opacity', tooHot ? (0.6 + 0.4 * Math.sin(S.t * 10)) : 0);
+
+  // water darkens with heat (grayscale), coil darkens with power
+  const k = (S.temp - T0) / (TMAX - T0);
+  const g = Math.round(226 - k * 110);
+  $('water').setAttribute('fill', `rgb(${g},${g},${g})`);
+  const c = Math.round(125 - S.power * 100);
+  $('coil').firstElementChild.setAttribute('stroke', `rgb(${c},${c},${c})`);
+  $('coil').firstElementChild.setAttribute('stroke-width', 4 + S.power * 3);
+
+  // steam above 60°
+  const st = Math.max(0, Math.min(1, (S.temp - 60) / 35));
+  $('steam').setAttribute('opacity', st);
+  for (let i = 0; i < 3; i++) $('st' + i).setAttribute('d', steamPath(140 + i * 20, S.t * 4 + i * 2, 30 + st * 60));
+
+  // bubbles above 80°, rolling boil above 100°
+  const boil = Math.max(0, (S.temp - 80) / 25);
+  if (Math.random() < boil * dt * 30) S.bub.push({ x: 112 + Math.random() * 96, y: 500, r: 2 + Math.random() * 3 * boil });
+  S.bub = S.bub.filter(b => (b.y -= (30 + 60 * boil) * dt) > 428);
+  $('bubbles').innerHTML = S.bub.map(b => `<circle cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" r="${b.r.toFixed(1)}"/>`).join('');
+
+  // kettle shakes when too hot
+  const sh = tooHot && !reduce ? Math.sin(S.t * 60) * 2.2 * (S.temp - 100) / 10 : 0;
+  $('kettle').setAttribute('transform', `translate(${sh.toFixed(2)},0)`);
+
+  // press feedback: a disc grows under the finger while held
+  S.pressR += ((S.holding ? 120 : 0) - S.pressR) * Math.min(1, dt * 8);
+  $('press').setAttribute('r', S.pressR.toFixed(1));
+
+  // idle cue: a ring that breathes outward, only before the first press
+  const idle = !S.done && !S.holding && S.temp < 40;
+  if (idle && !reduce) {
+    const p = (S.t % 2.2) / 2.2;
+    $('cue').setAttribute('r', 90 + p * 40); $('cue').setAttribute('opacity', (1 - p) * 0.9);
+  } else $('cue').setAttribute('opacity', idle ? 0.6 : 0);
+
+  $('done').setAttribute('opacity', S.done ? 1 : 0);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+
+</body>
+</html>

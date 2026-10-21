@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gongfu Tea</title>
+<meta name="description" content="A sequential interaction prototype: heat the water, add the leaves, pour the tea.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="phone">
+<svg id="stage" viewBox="0 0 390 844" role="application" aria-label="Gongfu tea: heat the water, add the leaves, pour the tea">
+  <defs>
+    <clipPath id="screenClip"><rect x="0" y="0" width="390" height="844"/></clipPath>
+    <clipPath id="bowlClip" clipPathUnits="userSpaceOnUse"><path id="bowlClipPath" d="M74 282 Q79 356 140 356 Q201 356 206 282 Z"/></clipPath>
+    <clipPath id="bowlLocal" clipPathUnits="userSpaceOnUse"><path d="M74 282 Q79 356 140 356 Q201 356 206 282 Z"/></clipPath>
+    <clipPath id="potClip" clipPathUnits="userSpaceOnUse"><path d="M219 534 L321 534 L312 686 Q270 695 228 686 Z"/></clipPath>
+    <clipPath id="cupClip" clipPathUnits="userSpaceOnUse"><path d="M125 380 Q130 470 195 472 Q260 470 265 380 Z"/></clipPath>
+    <linearGradient id="strength" x1="0" x2="1">
+      <stop id="g0" offset="0"/><stop id="g1" offset=".5"/><stop id="g2" offset="1"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="390" height="844" fill="var(--porcelain)"/>
+
+  <!-- ===== header: always visible ===== -->
+  <text x="28" y="60" font-size="11" fill="var(--mid)" letter-spacing="1.6">GONGFU TEA</text>
+  <text class="title" x="28" y="92" font-size="30" fill="var(--ink)" id="headline">Heat the water</text>
+  <g id="steps"></g>
+  <g id="resetAll" class="hit" tabindex="0" role="button" aria-label="Start over">
+    <circle class="focus" cx="352" cy="70" r="20" fill="var(--faint)"/>
+    <path d="M361 70a9 9 0 1 1-3-6.7" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M358.5 58.5v5.5h-5.5" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g clip-path="url(#screenClip)">
+  <!-- ===== scene 1: heat the water (press + hold) ===== -->
+  <g id="sHeat" class="scene">
+    <g id="hThermo">
+      <rect x="312" y="250" width="20" height="390" rx="10" fill="var(--faint)" stroke="var(--soft)"/>
+      <circle cx="322" cy="662" r="20" fill="var(--faint)" stroke="var(--soft)"/>
+      <rect id="hMerc" x="317" y="600" width="10" height="60" rx="5" fill="var(--ink)"/>
+      <circle cx="322" cy="662" r="13" fill="var(--ink)"/>
+      <g id="hTicks"></g>
+      <rect id="hBand" x="300" y="0" width="44" height="0" rx="4" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+      <text id="hBandLbl" x="296" y="0" font-size="11" fill="var(--mid)" text-anchor="end"></text>
+      <text id="hReadout" class="num" x="322" y="712" font-size="15" fill="var(--ink)" text-anchor="middle" font-weight="500">20°</text>
+      <g id="hHot" opacity="0">
+        <circle cx="322" cy="226" r="12" fill="var(--ink)"/>
+        <path d="M317 221 l10 10 M327 221 l-10 10" stroke="var(--porcelain)" stroke-width="2.5" stroke-linecap="round"/>
+      </g>
+    </g>
+    <g id="hSteam" fill="none" stroke="var(--soft)" stroke-width="3" stroke-linecap="round" opacity="0">
+      <path id="hSt0"/><path id="hSt1"/><path id="hSt2"/>
+    </g>
+    <g id="hHit" class="hit" tabindex="0" role="button" aria-label="Kettle. Press and hold to heat the water.">
+      <circle id="hCue" cx="160" cy="470" r="110" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0"/>
+      <rect class="focus" x="40" y="300" width="240" height="300" rx="24" fill="transparent"/>
+      <g id="hKettle">
+        <path d="M110 330 q50 -46 100 0" fill="none" stroke="var(--ink)" stroke-width="10" stroke-linecap="round"/>
+        <path d="M96 380 L72 352 L60 356 L86 404 Z" fill="var(--ink)"/>
+        <rect x="96" y="352" width="128" height="160" rx="34" fill="var(--porcelain)" stroke="var(--ink)" stroke-width="5"/>
+        <rect x="138" y="342" width="44" height="12" rx="6" fill="var(--ink)"/>
+        <rect id="hWater" x="104" y="420" width="112" height="84" rx="12" fill="var(--water)"/>
+        <g id="hBubbles" fill="var(--porcelain)" stroke="var(--mid)" stroke-width="1.5"></g>
+      </g>
+      <rect x="80" y="524" width="160" height="22" rx="8" fill="var(--soft)"/>
+      <path id="hCoil" d="M100 535 h120" fill="none" stroke="var(--mid)" stroke-width="4" stroke-linecap="round"/>
+      <circle id="hPress" cx="160" cy="470" r="0" fill="var(--accent)" opacity=".12"/>
+    </g>
+    <g id="hDone" opacity="0">
+      <circle cx="160" cy="612" r="22" fill="var(--accent)"/>
+      <path d="M150 612 l7 7 l13 -14" fill="none" stroke="var(--porcelain)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- ===== scene 2: add the leaves (tap) ===== -->
+  <g id="sLeaves" class="scene" transform="translate(390 0)">
+    <g id="lBowlG">
+      <ellipse cx="195" cy="600" rx="120" ry="16" fill="var(--faint)" stroke="var(--ink)" stroke-width="4"/>
+      <path d="M105 470 Q110 590 195 590 Q280 590 285 470 Z" fill="var(--porcelain)" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round"/>
+      <ellipse cx="195" cy="470" rx="90" ry="14" fill="var(--faint)" stroke="var(--ink)" stroke-width="4"/>
+      <ellipse id="lTarget" cx="195" cy="470" rx="104" ry="24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 6"/>
+      <g id="lPile"></g>
+    </g>
+    <g id="lSpill"></g>
+    <g id="lAir"></g>
+    <g id="lJarHit" class="hit" tabindex="0" role="button" aria-label="Tea jar. Tap to add one pinch of leaves.">
+      <rect class="focus" x="196" y="164" width="140" height="190" rx="20" fill="transparent"/>
+      <g id="lJar">
+        <rect x="226" y="196" width="88" height="124" rx="16" fill="var(--faint)" stroke="var(--ink)" stroke-width="4"/>
+        <rect x="220" y="178" width="100" height="24" rx="8" fill="var(--ink)"/>
+        <g fill="var(--ink)" opacity=".6">
+          <ellipse cx="252" cy="280" rx="6" ry="3" transform="rotate(20 252 280)"/>
+          <ellipse cx="272" cy="296" rx="6" ry="3" transform="rotate(-30 272 296)"/>
+          <ellipse cx="290" cy="276" rx="6" ry="3" transform="rotate(50 290 276)"/>
+          <ellipse cx="262" cy="304" rx="6" ry="3"/>
+          <ellipse cx="288" cy="302" rx="6" ry="3" transform="rotate(-10 288 302)"/>
+        </g>
+      </g>
+      <circle id="lTapRing" cx="270" cy="258" r="0" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0"/>
+    </g>
+    <g id="lMeter"></g>
+    <rect id="lBracket" x="0" y="680" width="0" height="36" rx="18" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <text id="lBracketLbl" x="0" y="740" font-size="11" fill="var(--mid)" text-anchor="middle"></text>
+    <text x="195" y="640" font-size="11" fill="var(--mid)" text-anchor="middle">100 ml</text>
+    <g id="lDone" opacity="0">
+      <circle cx="195" cy="790" r="22" fill="var(--accent)"/>
+      <path d="M185 790 l7 7 l13 -14" fill="none" stroke="var(--porcelain)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g id="lOver" opacity="0">
+      <circle cx="170" cy="790" r="22" fill="none" stroke="var(--ink)" stroke-width="3"/>
+      <path d="M162 782 l16 16 M178 782 l-16 16" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="lRetry" class="hit" tabindex="-1" role="button" aria-label="Try this step again" opacity="0" style="pointer-events:none">
+      <circle class="focus" cx="222" cy="790" r="22" fill="var(--ink)"/>
+      <path d="M230 790a8 8 0 1 1-2.6-5.9" fill="none" stroke="var(--porcelain)" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M228 779.5v5h-5" fill="none" stroke="var(--porcelain)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- ===== scene 3: pour the tea (drag to tilt) ===== -->
+  <g id="sPour" class="scene" transform="translate(390 0)"><g id="pShift" transform="translate(0 40)">
+    <g id="pTimer">
+      <circle cx="95" cy="600" r="32" fill="none" stroke="var(--faint)" stroke-width="8"/>
+      <path id="pWin" fill="none" stroke="var(--accent)" stroke-opacity=".45" stroke-width="16"/>
+      <path id="pArc" fill="none" stroke="var(--ink)" stroke-width="8" stroke-linecap="round"/>
+      <text id="pTxt" class="num" x="95" y="605" font-size="15" text-anchor="middle" fill="var(--ink)" font-weight="500">0s</text>
+      <text id="pWinLbl" x="95" y="656" font-size="11" text-anchor="middle" fill="var(--mid)"></text>
+    </g>
+    <path id="pGuide" d="M214 276 Q262 300 268 520" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 7" opacity="0"/>
+    <g id="pPot">
+      <rect id="pPotTea" x="200" y="690" width="140" height="10" clip-path="url(#potClip)"/>
+      <path d="M216 530 L324 530 L314 690 Q270 700 226 690 Z" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M216 530 L202 518" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/>
+      <path d="M324 556 q26 6 22 44 q-3 26 -26 30" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <path id="pStream" fill="none" stroke-linecap="round" stroke-width="0"/>
+    <g id="pGwHit" class="drag" tabindex="0" role="slider" aria-label="Gaiwan. Drag right or down to tilt and pour. Arrow keys also tilt." aria-valuemin="0" aria-valuemax="115" aria-valuenow="0">
+      <rect class="focus" x="40" y="200" width="200" height="200" rx="24" fill="transparent"/>
+      <rect id="pBowlTea" x="0" y="600" width="390" height="260" clip-path="url(#bowlClip)"/>
+      <g id="pGw">
+        <g id="pLeafIn" clip-path="url(#bowlLocal)"></g>
+        <path d="M70 280 Q75 360 140 360 Q205 360 210 280" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M100 360 L100 372 L180 372 L180 360" fill="none" stroke="var(--ink)" stroke-width="4"/>
+        <g id="pLid" transform="rotate(-8 80 276)">
+          <path d="M76 274 Q140 226 204 274 Z" fill="var(--porcelain)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+          <rect x="128" y="234" width="24" height="12" rx="5" fill="var(--ink)"/>
+        </g>
+      </g>
+      <circle id="pGrip" cx="140" cy="300" r="0" fill="var(--accent)" opacity=".15"/>
+    </g>
+    <g id="pSteam" fill="none" stroke="var(--soft)" stroke-width="3" stroke-linecap="round"></g>
+    <!-- kettle that fills the gaiwan at the start of this scene -->
+    <g id="pKettle" opacity="0">
+      <path id="pKStream" fill="none" stroke="var(--water)" stroke-width="7" stroke-linecap="round"/>
+      <g id="pKBody">
+        <path d="M110 330 q50 -46 100 0" fill="none" stroke="var(--ink)" stroke-width="10" stroke-linecap="round"/>
+        <path d="M96 380 L72 352 L60 356 L86 404 Z" fill="var(--ink)"/>
+        <rect x="96" y="352" width="128" height="160" rx="34" fill="var(--porcelain)" stroke="var(--ink)" stroke-width="5"/>
+        <rect x="138" y="342" width="44" height="12" rx="6" fill="var(--ink)"/>
+      </g>
+    </g>
+    <g id="pResult" transform="translate(0 -22)">
+      <rect x="60" y="752" width="270" height="14" rx="7" fill="url(#strength)"/>
+      <rect id="pWinBar" x="0" y="744" width="0" height="30" rx="8" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+      <text x="60" y="796" font-size="11" fill="var(--mid)">light</text>
+      <text x="330" y="796" font-size="11" fill="var(--mid)" text-anchor="end">strong</text>
+      <path id="pMarker" d="M0 0 l-8 -12 h16 Z" fill="var(--ink)" opacity="0"/>
+    </g>
+    <g id="pVerdict" opacity="0"></g>
+    <g id="pRetry" class="hit" tabindex="-1" role="button" aria-label="Try this step again" opacity="0" style="pointer-events:none">
+      <circle class="focus" cx="247" cy="430" r="22" fill="var(--ink)"/>
+      <path d="M255 430a8 8 0 1 1-2.6-5.9" fill="none" stroke="var(--porcelain)" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M253 419.5v5h-5" fill="none" stroke="var(--porcelain)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g></g>
+
+  <!-- ===== end: your cup ===== -->
+  <g id="sEnd" class="scene" transform="translate(390 0)">
+    <g id="eSteam" fill="none" stroke="var(--soft)" stroke-width="3" stroke-linecap="round"></g>
+    <ellipse cx="195" cy="486" rx="110" ry="14" fill="var(--faint)" stroke="var(--ink)" stroke-width="4"/>
+    <rect id="eTea" x="110" y="390" width="170" height="90" clip-path="url(#cupClip)"/>
+    <path d="M120 372 Q126 474 195 476 Q264 474 270 372" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round"/>
+    <ellipse id="eSurface" cx="195" cy="392" rx="68" ry="9" opacity=".9"/>
+    <ellipse cx="195" cy="372" rx="75" ry="10" fill="none" stroke="var(--ink)" stroke-width="4"/>
+    <text class="title" x="195" y="572" font-size="30" text-anchor="middle" fill="var(--ink)" id="eTitle">Your cup</text>
+    <g id="eRows" font-size="13" fill="var(--ink)"></g>
+    <g id="eAgain" class="hit" tabindex="0" role="button" aria-label="Brew another cup">
+      <rect class="focus" x="105" y="738" width="180" height="52" rx="26" fill="var(--ink)"/>
+      <text x="195" y="770" font-size="14" text-anchor="middle" fill="var(--porcelain)">Brew another</text>
+    </g>
+  </g>
+  </g>
+</svg>
+</div>
+
+<!-- tool panel: hidden by default; press T or open the page with #tools -->
+<aside class="panel" id="panel" hidden aria-label="Tool panel"></aside>
+
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/panel.js"></script>
+</body>
+</html>
