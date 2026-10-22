@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Open the Curtain</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one 390×844 phone screen, centred and scaled to fit. Everything is one SVG.
+   Grayscale on purpose: this is a behaviour study, not a visual design. */
+:root{
+  --room:#cfcfcf; --screen:#f2f2f2; --ink:#1d1d1d; --mid:#808080; --soft:#bcbcbc; --faint:#e4e4e4;
+  --ui:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--room);color:var(--ink);display:flex;align-items:center;justify-content:center;
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));box-sizing:border-box;overflow:hidden}
+.phone{height:min(844px, calc(100% - 24px));aspect-ratio:390/844;max-width:100%;background:var(--screen);border-radius:36px;overflow:hidden;box-shadow:0 0 0 1px var(--soft)}
+svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;font-family:var(--ui)}
+.grab{cursor:grab;outline:none}.grab.on{cursor:grabbing}
+.grab:focus-visible .focus{stroke:var(--ink);stroke-dasharray:4 4;stroke-width:2}
+@media (max-width:430px){.phone{border-radius:0;box-shadow:none;height:100%}body{padding-left:0;padding-right:0}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+</head>
+<body>
+<div class="phone">
+<svg id="s" viewBox="0 0 390 844" aria-label="Interaction study: drag the curtain open to lay a sunbeam across the rug">
+ <defs>
+  <clipPath id="win"><rect x="54" y="150" width="282" height="300" rx="10"/></clipPath>
+  <clipPath id="room"><rect x="0" y="0" width="390" height="844"/></clipPath>
+  <linearGradient id="beamG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset="1" stop-color="#ffffff" stop-opacity=".35"/>
+  </linearGradient>
+ </defs>
+ <rect x="0" y="0" width="390" height="844" fill="#d9d9d9"/>
+ <text x="28" y="60" font-size="11" fill="var(--mid)" letter-spacing="1.6">CAT NAPS · STUDY 1</text>
+ <text x="28" y="84" font-size="17" fill="var(--ink)" font-weight="500">Open the curtain</text>
+
+ <!-- window -->
+ <rect x="54" y="150" width="282" height="300" rx="10" fill="#efefef" stroke="var(--ink)" stroke-width="4"/>
+ <g clip-path="url(#win)">
+   <rect id="sky" x="54" y="150" width="282" height="300" fill="#f7f7f7"/>
+   <circle cx="250" cy="215" r="26" fill="#ffffff" stroke="var(--soft)" stroke-width="2"/>
+   <path d="M54 400 l60 -58 l52 48 l44 -36 l60 54 l66 -40 v82 H54 Z" fill="#c9c9c9"/>
+   <g id="curtain">
+     <rect id="cBody" x="54" y="150" width="282" height="300" fill="#b4b4b4"/>
+     <g id="cFolds" stroke="#9a9a9a" stroke-width="3" fill="none"></g>
+   </g>
+ </g>
+ <line x1="46" y1="150" x2="344" y2="150" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
+ <rect x="54" y="150" width="282" height="300" rx="10" fill="none" stroke="var(--ink)" stroke-width="4"/>
+
+ <!-- the beam on the floor -->
+ <g clip-path="url(#room)">
+   <path id="beam" fill="url(#beamG)" opacity=".92"/>
+   <g id="motes" fill="#ffffff"></g>
+ </g>
+
+ <!-- floor + rug: the rug is the target, no label needed -->
+ <line x1="0" y1="560" x2="390" y2="560" stroke="var(--soft)" stroke-width="3"/>
+ <ellipse id="rug" cx="196" cy="660" rx="126" ry="40" fill="#cacaca" stroke="var(--mid)" stroke-width="3" stroke-dasharray="9 7"/>
+ <ellipse cx="196" cy="660" rx="104" ry="30" fill="none" stroke="var(--soft)" stroke-width="2"/>
+
+ <!-- cat -->
+ <g id="cat"></g>
+
+ <!-- the curtain's draggable edge -->
+ <g id="edge" class="grab" tabindex="0" role="slider" aria-label="Curtain. Drag it open. Arrow keys also work." aria-valuemin="0" aria-valuemax="100" aria-valuenow="4">
+   <rect class="focus" id="edgeHit" x="300" y="150" width="76" height="300" fill="transparent"/>
+   <g id="pull">
+     <rect id="pullBar" x="324" y="150" width="12" height="300" rx="6" fill="var(--ink)" opacity=".85"/>
+     <circle id="pullKnob" cx="330" cy="300" r="13" fill="var(--ink)"/>
+     <path d="M326 294 l-5 6 l5 6 M334 294 l5 6 l-5 6" stroke="var(--screen)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+   </g>
+   <circle id="hint" cx="330" cy="300" r="0" fill="none" stroke="var(--ink)" stroke-width="2" opacity="0"/>
+ </g>
+ <g id="done" opacity="0"><circle cx="196" cy="780" r="20" fill="var(--ink)"/><path d="M187 780 l6 6 l12 -13" fill="none" stroke="var(--screen)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+ <g id="glare" opacity="0"><circle cx="196" cy="780" r="20" fill="none" stroke="var(--ink)" stroke-width="3"/><path d="M189 773 l14 14 M203 773 l-14 14" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/></g>
+</svg>
+</div>
+<script>
+const $=id=>document.getElementById(id), svg=$('s');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const toSvg=e=>{const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());};
+const X0=66, X1=330;                 // curtain edge travel
+const GOOD=[0.52,0.84];              // open fraction that lays the beam across the rug
+let S;
+function reset(){ S={open:.04, target:.04, drag:null, t:0, settle:0, done:false, glare:false, moved:false, walk:0, pose:'sit', motes:[]}; }
+reset();
+
+const edge=$('edge');
+edge.addEventListener('pointerdown',e=>{ if(S.done) return; const p=toSvg(e); S.drag={x:p.x, base:S.open}; S.moved=true; edge.setPointerCapture(e.pointerId); edge.classList.add('on'); });
+edge.addEventListener('pointermove',e=>{ if(!S.drag) return; const p=toSvg(e); S.target=clamp(S.drag.base+(p.x-S.drag.x)/(X1-X0),0,1); });
+const up=()=>{ if(!S.drag) return; S.drag=null; edge.classList.remove('on'); };
+edge.addEventListener('pointerup',up); edge.addEventListener('pointercancel',up); edge.addEventListener('lostpointercapture',up);
+edge.addEventListener('keydown',e=>{ const d=e.key==='ArrowRight'?.06:e.key==='ArrowLeft'?-.06:0; if(!d) return; e.preventDefault(); S.moved=true; S.target=clamp(S.target+d,0,1); });
+
+// the cat: sits, walks to the rug, then settles into the beam
+function drawCat(x,y,pose,blink,t){
+  const s=1, ear=pose==='sit'?0:-2;
+  const legs = pose==='walk' ? `<path d="M${x-14} ${y+16} l${Math.sin(t*9)*5} 14 M${x+2} ${y+16} l${Math.sin(t*9+3)*5} 14" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>` : '';
+  const tail = pose==='walk'
+    ? `<path d="M${x+26} ${y+6} q22 ${-10+Math.sin(t*5)*8} 16 ${-26}" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>`
+    : `<path d="M${x+24} ${y+14} q26 6 20 -14" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>`;
+  const eye = blink>0.5 ? `<path d="M${x-15} ${y-26} h8 M${x-1} ${y-26} h8" stroke="var(--screen)" stroke-width="2.5" stroke-linecap="round"/>`
+                        : `<circle cx="${x-11}" cy="${y-26}" r="2.4" fill="var(--screen)"/><circle cx="${x+3}" cy="${y-26}" r="2.4" fill="var(--screen)"/>`;
+  return `${tail}<ellipse cx="${x+2}" cy="${y+22}" rx="30" ry="6" fill="#000" opacity=".12"/>
+  <path d="M${x-22} ${y+18} q-6 -34 14 -40 q26 -8 34 16 q6 22 -6 24 Z" fill="var(--ink)"/>
+  ${legs}
+  <circle cx="${x-4}" cy="${y-22}" r="19" fill="var(--ink)"/>
+  <path d="M${x-20} ${y-33} l-2 ${-16+ear} l15 7 Z" fill="var(--ink)"/>
+  <path d="M${x+6} ${y-36} l6 ${-15+ear} l9 11 Z" fill="var(--ink)"/>
+  ${eye}
+  <path d="M${x-4} ${y-18} l-3 3 l3 2 l3 -2 Z" fill="var(--screen)"/>`;
+}
+function curledCat(x,y,blink){
+  const eye = blink>.5 ? `<path d="M${x-10} ${y-10} q5 4 10 0" fill="none" stroke="var(--screen)" stroke-width="2.5" stroke-linecap="round"/>`
+                       : `<circle cx="${x-5}" cy="${y-11}" r="2.2" fill="var(--screen)"/>`;
+  return `<ellipse cx="${x}" cy="${y+16}" rx="40" ry="7" fill="#000" opacity=".12"/>
+  <path d="M${x-42} ${y+10} q-4 -30 24 -34 q30 -5 44 14 q14 20 -6 26 q-30 8 -62 -6 Z" fill="var(--ink)"/>
+  <circle cx="${x-14}" cy="${y-8}" r="17" fill="var(--ink)"/>
+  <path d="M${x-28} ${y-18} l-3 -14 l14 6 Z" fill="var(--ink)"/>
+  <path d="M${x-6} ${y-21} l6 -13 l8 10 Z" fill="var(--ink)"/>${eye}`;
+}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now; S.t+=dt;
+  S.open += (S.target-S.open)*Math.min(1,dt*9);
+  const o=S.open;
+  edge.setAttribute('aria-valuenow', Math.round(o*100));
+
+  // curtain gathers to the right as it opens
+  const ex=X0+o*(X1-X0);
+  const w=Math.max(10, 336-ex);
+  $('cBody').setAttribute('x', ex); $('cBody').setAttribute('width', w);
+  let f=''; const n=6;
+  for(let i=0;i<n;i++){ const fx=ex+6+ (w-12)*(i/(n-1||1)); f+=`<path d="M${fx.toFixed(1)} 150 q${(4-o*3).toFixed(1)} 150 0 300"/>`; }
+  $('cFolds').innerHTML=f;
+  $('pull').setAttribute('transform',`translate(${(ex-X0).toFixed(1)} 0)`);
+  $('edgeHit').setAttribute('x', (300+ex-X0).toFixed(1));
+
+  // beam: a wedge from the window gap onto the floor
+  const gapL=54, gapR=ex;
+  if(gapR-gapL>6){
+    const gw=gapR-gapL, fl=gapL-gw*.26-8, fr=gapR+gw*.34+16;   // the wedge fans out from the gap itself
+    $('beam').setAttribute('d',`M${gapL} 450 L${gapR.toFixed(1)} 450 L${fr.toFixed(1)} 744 L${fl.toFixed(1)} 744 Z`);
+    $('beam').setAttribute('opacity', (.25+o*.7).toFixed(2));
+  } else $('beam').setAttribute('d','');
+  $('sky').setAttribute('fill', `rgb(${Math.round(240+o*15)},${Math.round(240+o*15)},${Math.round(240+o*15)})`);
+
+  // dust motes drift in the beam — a sign the light is real, and it thickens as you open
+  if(!reduce && Math.random()<o*dt*24) S.motes.push({x:gapL+Math.random()*(gapR-gapL+40), y:460+Math.random()*240, v:-8-Math.random()*12, a:1});
+  for(const m of S.motes){ m.y+=m.v*dt; m.x+=Math.sin(S.t+m.y*.05)*6*dt; m.a-=dt*.22; }
+  S.motes=S.motes.filter(m=>m.a>0);
+  $('motes').innerHTML=S.motes.map(m=>`<circle cx="${m.x.toFixed(1)}" cy="${m.y.toFixed(1)}" r="2" opacity="${(m.a*.75).toFixed(2)}"/>`).join('');
+
+  // how much of the rug the beam covers, 0..1
+  const cover=clamp((o-0.18)/0.5,0,1);
+  const good = o>=GOOD[0] && o<=GOOD[1];
+  const glare = o>GOOD[1];
+  $('rug').setAttribute('fill', `rgb(${Math.round(202+cover*44)},${Math.round(202+cover*44)},${Math.round(202+cover*44)})`);
+  $('rug').setAttribute('stroke-dasharray', good||S.done ? '0' : '9 7');
+  $('rug').setAttribute('stroke', good||S.done ? 'var(--ink)' : 'var(--mid)');
+
+  // the cat answers the light: it turns, walks over, and settles once the beam holds
+  if(!S.done){
+    if(good){ S.settle+=dt; S.walk=Math.min(1,S.walk+dt*.8); } else { S.settle=0; S.walk=Math.max(0,S.walk-dt*1.2); }
+    if(S.settle>1.6 && S.walk>=1) S.done=true;
+  }
+  S.glare=glare;
+  const cx=70+S.walk*120, cy=700-S.walk*40;
+  const blink=(Math.sin(S.t*1.3)>.96)?1:0;
+  if(S.done) $('cat').innerHTML=curledCat(190,688,(Math.sin(S.t*.8)>.2)?1:0);
+  else if(glare) $('cat').innerHTML=drawCat(cx,cy,'sit',1,S.t);
+  else $('cat').innerHTML=drawCat(cx,cy, S.walk>0&&S.walk<1?'walk':'sit', blink, S.t);
+
+  // the only hint: the pull breathes until you touch it
+  if(!S.moved&&!reduce){ const p=(S.t%2)/2; $('hint').setAttribute('r',(16+p*26).toFixed(1)); $('hint').setAttribute('opacity',(1-p).toFixed(2)); $('hint').setAttribute('transform',`translate(${(ex-X0).toFixed(1)} 0)`); }
+  else $('hint').setAttribute('opacity',0);
+
+  $('done').setAttribute('opacity',S.done?1:0);
+  $('glare').setAttribute('opacity',(!S.done&&glare)?1:0);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.CAT=()=>S;
+</script>
+
+</body>
+</html>

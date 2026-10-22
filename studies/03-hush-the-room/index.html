@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hush the Room</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one 390×844 phone screen, centred and scaled to fit. Everything is one SVG. Grayscale study. */
+:root{
+  --room:#cfcfcf; --screen:#f2f2f2; --ink:#1d1d1d; --mid:#808080; --soft:#bcbcbc; --faint:#e4e4e4;
+  --ui:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--room);color:var(--ink);display:flex;align-items:center;justify-content:center;
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));box-sizing:border-box;overflow:hidden}
+.phone{height:min(844px, calc(100% - 24px));aspect-ratio:390/844;max-width:100%;background:var(--screen);border-radius:36px;overflow:hidden;box-shadow:0 0 0 1px var(--soft)}
+svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;font-family:var(--ui)}
+.hit{cursor:pointer;outline:none}
+.hit:focus-visible .focus{stroke:var(--ink);stroke-dasharray:4 4;stroke-width:2}
+@media (max-width:430px){.phone{border-radius:0;box-shadow:none;height:100%}body{padding-left:0;padding-right:0}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+</head>
+<body>
+<div class="phone">
+<svg id="s" viewBox="0 0 390 844" aria-label="Interaction study: press and hold anywhere to quieten the room until the cat falls asleep">
+ <!-- the whole room is the target: press anywhere, no button -->
+ <g id="hit" class="hit" tabindex="0" role="button" aria-label="The room. Press and hold anywhere to quieten it.">
+ <rect class="focus" x="0" y="0" width="390" height="844" fill="#d9d9d9"/>
+ <text x="28" y="60" font-size="11" fill="var(--mid)" letter-spacing="1.6">CAT NAPS · STUDY 3</text>
+ <text x="28" y="84" font-size="17" fill="var(--ink)" font-weight="500">Hush the room</text>
+
+ <!-- three things making noise -->
+ <g id="clock">
+   <circle cx="92" cy="206" r="34" fill="var(--screen)" stroke="var(--ink)" stroke-width="4"/>
+   <path id="hand" d="M92 206 L92 184" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+   <circle cx="92" cy="206" r="3" fill="var(--ink)"/>
+ </g>
+ <g id="win">
+   <rect x="232" y="162" width="122" height="106" rx="6" fill="var(--screen)" stroke="var(--ink)" stroke-width="4"/>
+   <line x1="293" y1="162" x2="293" y2="268" stroke="var(--ink)" stroke-width="3"/>
+ </g>
+ <g id="pipe">
+   <rect x="36" y="372" width="30" height="120" rx="12" fill="var(--screen)" stroke="var(--ink)" stroke-width="4"/>
+   <line x1="44" y1="396" x2="58" y2="396" stroke="var(--soft)" stroke-width="3"/>
+   <line x1="44" y1="430" x2="58" y2="430" stroke="var(--soft)" stroke-width="3"/>
+   <line x1="44" y1="464" x2="58" y2="464" stroke="var(--soft)" stroke-width="3"/>
+ </g>
+ <g id="waves" fill="none" stroke="var(--ink)"></g>
+
+ <!-- cushion + cat from the earlier steps -->
+ <ellipse cx="196" cy="636" rx="150" ry="48" fill="#e9e9e9" stroke="var(--soft)" stroke-width="3"/>
+ <path d="M72 620 q-6 -40 36 -46 q90 -12 160 2 q42 6 36 44 q-6 26 -116 26 q-110 0 -116 -26 Z" fill="#ededed" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+ <g id="cat"></g>
+ <g id="zzz" fill="var(--ink)" opacity="0"></g>
+
+ <!-- the breath line settles as the room quietens -->
+ <path id="breath" d="" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+ <path id="calmBand" d="" fill="none" stroke="var(--soft)" stroke-width="14" stroke-linecap="round"/>
+
+ <!-- the dim that follows your press -->
+ <rect id="dim" x="0" y="0" width="390" height="844" fill="#1d1d1d" opacity="0" pointer-events="none"/>
+ <circle id="ring" cx="195" cy="470" r="0" fill="none" stroke="var(--screen)" stroke-width="2" opacity="0" pointer-events="none"/>
+ <circle id="cue" cx="195" cy="470" r="0" fill="none" stroke="var(--ink)" stroke-width="2" opacity="0" pointer-events="none"/>
+ </g>
+ <g id="done" opacity="0"><circle cx="196" cy="800" r="19" fill="var(--screen)"/><circle cx="196" cy="800" r="19" fill="var(--ink)"/><path d="M188 800 l6 6 l11 -12" fill="none" stroke="var(--screen)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+</svg>
+</div>
+<script>
+const $=id=>document.getElementById(id), svg=$('s');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const toSvg=e=>{const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());};
+let S;
+const reset=()=>{ S={q:0, hold:false, t:0, done:false, asleep:0, touched:false, px:195, py:470, ring:1, woke:0}; };
+reset();
+const hit=$('hit');
+const down=e=>{ if(S.done) return; S.hold=true; S.touched=true; S.ring=0; if(e&&e.clientX!==undefined){const p=toSvg(e); S.px=p.x; S.py=p.y;} if(e&&e.pointerId!==undefined) hit.setPointerCapture(e.pointerId); };
+const up=()=>{ S.hold=false; };
+hit.addEventListener('pointerdown',down); hit.addEventListener('pointerup',up);
+hit.addEventListener('pointercancel',up); hit.addEventListener('lostpointercapture',up);
+hit.addEventListener('keydown',e=>{ if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();down();} });
+hit.addEventListener('keyup',e=>{ if(e.key===' '||e.key==='Enter') up(); });
+hit.addEventListener('contextmenu',e=>e.preventDefault());
+
+function cat(x,y,q,t){
+  const open=1-q;                                   // eyes close as the room quietens
+  const breath=Math.sin(t*(2.6-q*1.6))*(2.5-q*1.2);
+  const ear=q>.8?4:0;                               // ears fold down at the end
+  const eye = open<.25
+    ? `<path d="M${x-20} ${y-12} q5 4 10 0" fill="none" stroke="var(--screen)" stroke-width="2.4" stroke-linecap="round"/>`
+    : `<ellipse cx="${x-16}" cy="${y-12}" rx="2.4" ry="${(2.4*open).toFixed(1)}" fill="var(--screen)"/>`;
+  return `<ellipse cx="${x}" cy="${y+22}" rx="52" ry="8" fill="#000" opacity=".12"/>
+  <path d="M${x-52} ${y+16} q-6 -34 28 -40 q36 -6 52 16 q16 22 -6 30 q-36 10 -74 -6 Z" fill="var(--ink)" transform="translate(0 ${breath.toFixed(2)})"/>
+  <circle cx="${x-18}" cy="${y-10}" r="20" fill="var(--ink)" transform="translate(0 ${breath.toFixed(2)})"/>
+  <path d="M${x-35} ${y-22} l${-3+ear} ${-17+ear*2} l17 8 Z" fill="var(--ink)" transform="translate(0 ${breath.toFixed(2)})"/>
+  <path d="M${x-8} ${y-26} l${7-ear} ${-16+ear*2} l10 12 Z" fill="var(--ink)" transform="translate(0 ${breath.toFixed(2)})"/>
+  <g transform="translate(0 ${breath.toFixed(2)})">${eye}<path d="M${x-18} ${y-4} l-3 3 l3 2 l3 -2 Z" fill="var(--screen)"/></g>`;
+}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now; S.t+=dt;
+  // quiet builds while you hold and leaks back when you let go
+  if(!S.done){
+    if(S.hold) S.q=clamp(S.q+dt*0.27,0,1);
+    else { const before=S.q; S.q=clamp(S.q-dt*0.33,0,1); if(before>.25&&S.q<before) S.woke=Math.min(1,S.woke+dt*2.5); }
+    if(S.hold) S.woke=Math.max(0,S.woke-dt*2);
+  }
+  const q=S.q, loud=1-q;
+
+  // the three noises shrink
+  let w='';
+  const src=[[92,206,1],[293,215,1.15],[51,432,.85]];
+  for(let i=0;i<src.length;i++){
+    const [x,y,sc]=src[i];
+    for(let k=1;k<=3;k++){
+      const ph=((S.t*(0.7+i*0.1)+k*0.33)%1);
+      const r=(16+ph*52)*sc*(0.25+loud*0.75);
+      const a=(1-ph)*loud*0.75;
+      if(a>0.02) w+=`<circle cx="${x}" cy="${y}" r="${r.toFixed(1)}" opacity="${a.toFixed(2)}" stroke-width="${(2.4*(1-ph*.5)).toFixed(1)}"/>`;
+    }
+  }
+  $('waves').innerHTML=w;
+  $('hand').setAttribute('transform',`rotate(${(S.t*(60+loud*300))%360} 92 206)`);
+
+  // the room dims as it quietens
+  $('dim').setAttribute('opacity',(q*0.4).toFixed(3));
+
+  // breath line: ragged while the room is loud, a slow even wave once it is quiet
+  const amp=10-q*4, per=1.8-q*1.0;
+  let d=`M58 744`;
+  for(let i=1;i<=68;i++){
+    const u=i/68, x=58+u*274;
+    const y=744 - Math.sin(u*Math.PI*2*per + S.t*(2.4-q*1.5))*amp - (loud>0.1?(Math.random()-0.5)*loud*7:0);
+    d+=` L${x.toFixed(1)} ${y.toFixed(1)}`;
+  }
+  $('breath').setAttribute('d',d);
+  $('breath').setAttribute('opacity',(0.35+q*0.65).toFixed(2));
+  $('calmBand').setAttribute('d',`M58 744 L332 744`);
+  $('calmBand').setAttribute('opacity', q>0.72?0.5:0.18);
+
+  // asleep when the room has been quiet for a moment
+  if(!S.done && q>=1){ S.asleep+=dt; if(S.asleep>0.9) S.done=true; } else if(!S.done) S.asleep=0;
+
+  $('cat').innerHTML=cat(196, 600, S.done?1:q, S.t);
+  if(S.done){
+    let z=''; for(let i=0;i<3;i++){ const p=((S.t*.35+i*.33)%1); z+=`<text x="${(262+p*26).toFixed(0)}" y="${(560-p*70).toFixed(0)}" font-size="${(13+i*5)}" opacity="${((1-p)*.9).toFixed(2)}">z</text>`; }
+    $('zzz').innerHTML=z; $('zzz').setAttribute('opacity',1);
+  } else $('zzz').setAttribute('opacity',0);
+
+  // the press itself: a ring under the finger; a slow pulse invites the first one
+  S.ring=Math.min(1,S.ring+dt*1.6);
+  $('ring').setAttribute('cx',S.px); $('ring').setAttribute('cy',S.py);
+  $('ring').setAttribute('r',(10+S.ring*120).toFixed(1));
+  $('ring').setAttribute('opacity',S.hold?((1-S.ring)*.5).toFixed(2):0);
+  if(!S.touched&&!reduce){ const p=(S.t%2.4)/2.4; $('cue').setAttribute('r',(40+p*70).toFixed(1)); $('cue').setAttribute('opacity',((1-p)*.5).toFixed(2)); }
+  else $('cue').setAttribute('opacity',0);
+
+  $('done').setAttribute('opacity',S.done?1:0);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.CAT=()=>S;
+</script>
+
+</body>
+</html>

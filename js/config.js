@@ -1,27 +1,27 @@
-// Saved defaults for the prototype.
-// The tool panel (press T, or open the page with #tools) edits a live copy of these values.
-// "Copy settings" in the panel produces a prompt that asks Claude Code to write the new values here.
-window.TEA_DEFAULTS = {
+// Saved defaults for Cat Naps.
+// The tool panel (press T, or open the page with #tools) edits a live copy of these.
+// "Copy settings" in the panel produces a prompt that asks Claude Code to write new values here.
+window.CAT_DEFAULTS = {
   colors: {
-    background: '#e4e1d9',   // room around the phone
-    porcelain: '#fbfaf6',    // gaiwan, cups, screen
-    ink: '#24221e',          // outlines and text
-    accent: '#6f8f7f',       // celadon: cues, active step, success
-    water: '#d7e0dc',        // fresh water in the kettle
-    teaLight: '#efe3b2',     // a very short steep
-    teaMid: '#c98b3c',       // a balanced cup
-    teaStrong: '#6a3313'     // an over-steeped cup
+    wall: '#e8e1d6',      // room behind everything
+    floor: '#cbb79e',     // floorboards
+    ink: '#2e2a24',       // outlines, the cat
+    sun: '#ffeec2',       // the sunbeam
+    cushion: '#f3ece0',   // cushion face
+    accent: '#8a7b5e',    // cues and success
+    night: '#1b1a24'      // the dim that comes in as the room quietens
   },
   motion: {
-    heatSpeed: 1,            // × base heating rate
-    leafGravity: 1100,       // px/s² for falling leaves
-    pourFlow: 1,             // × base pour rate
-    transitionMs: 700,       // scene change duration
-    easing: 'easeInOut'      // linear | easeIn | easeOut | easeInOut | spring
+    curtainLag: 9,        // how closely the curtain follows the hand (higher = tighter)
+    smoothPower: 1,       // × how much each stroke flattens
+    hushRate: 0.27,       // quiet gained per second while held
+    leakRate: 0.33,       // quiet lost per second after letting go
+    transitionMs: 800,    // scene change
+    easing: 'easeInOut'   // linear | easeIn | easeOut | easeInOut | spring
   },
   targets: {
-    tempLow: 90, tempHigh: 95,     // °C, oolong water
-    gramsLow: 5, gramsHigh: 7,     // g of leaf for a 100 ml gaiwan
-    steepLow: 10, steepHigh: 20    // s at 93 °C and 6 g (scaled by your earlier choices)
+    beamLow: 0.52, beamHigh: 0.84,   // how far open the curtain should be
+    smoothMin: 0.62, loftMin: 0.24,  // the cushion must be smooth and still lofty
+    hushHold: 0.9                    // seconds of full quiet before the cat sleeps
   }
 };

@@ -1,4 +1,4 @@
-# Gongfu Tea — sequential interaction prototype
+# Cat Naps — sequential interaction prototype
 
 Project 2 interaction prototype for IXD 107, built with Claude Code and published with GitHub Pages.
 
@@ -6,18 +6,18 @@ Project 2 interaction prototype for IXD 107, built with Claude Code and publishe
 
 ## The sequence
 
-One cup of oolong, brewed in three steps. Each step unlocks only after the previous one succeeds, and each choice carries forward into the next.
+Get a cat to fall asleep by making one corner of a room worth sleeping in. Each step unlocks only after the one before it holds, and the choices carry forward.
 
 | Step | Gesture | Goal | What carries forward |
 |---|---|---|---|
-| 1. Heat the water | Press + hold the kettle | Let go inside 90–95 °C | Water temperature |
-| 2. Add the leaves | Tap the tea jar (1 tap ≈ 1 g) | 5–7 g for a 100 ml gaiwan | Amount of leaf |
-| 3. Pour the tea | Drag the gaiwan to tilt it | Pour inside the steep window | Hotter water and more leaf make the tea steep faster, so the window shifts |
-| Your cup | — | Summary of temperature, leaf and steep time | — |
+| 1. Open the curtain | Drag the curtain's pull | Lay the sunbeam across the rug — not so wide it glares | How warm the room looks |
+| 2. Smooth the cushion | Swipe back and forth | Flatten the lumps but leave the loft | How quickly the cat settles |
+| 3. Hush the room | Press and hold anywhere | Hold until the breathing evens out | — |
+| Asleep | — | A summary of light, loft and hush | — |
 
-The kettle comes back between steps 2 and 3 to fill the gaiwan with the water heated in step 1.
+No obvious buttons. The curtain has a pull, the cushion has lumps and loose fibres, the noise sources send out rings — and the cat is the progress bar: it turns its head, walks over, kneads, half-closes its eyes.
 
-## Tool panel ("Tea tuning")
+## Tool panel ("Room tuning")
 
 Press **T** (or open the page with `#tools`) to show a panel for colours, motion and targets.
 **Copy settings** produces a prompt for Claude Code that writes the values into `js/config.js` as the saved defaults.
@@ -29,15 +29,11 @@ The panel is hidden by default for demos.
 index.html            the final prototype (GitHub Pages serves this)
 css/style.css         layout and panel styles
 js/config.js          saved defaults (colours, motion, targets)
-js/app.js             the sequence: heat → leaves → pour → your cup
-js/panel.js           the "Tea tuning" tool panel
-studies/              the three original Week 4 interaction studies, unchanged
+js/app.js             the sequence: curtain → cushion → hush → asleep
+js/panel.js           the "Room tuning" tool panel
+studies/              the three Week 4 interaction studies, unchanged
+docs/week5/           screenshots used in the Week 5 process document
 .nojekyll             tells GitHub Pages to serve files as they are
 ```
 
 No build step and no server: everything runs directly in the browser.
-
-## Week 5 documentation
-
-`docs/week5/` holds the tool-panel screenshot and the three settings variations
-used in the Week 5 process document.
