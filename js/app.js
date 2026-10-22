@@ -223,7 +223,7 @@ const L = (() => {
    3  POUR THE TEA — drag to tilt
    ===================================================================== */
 const P = (() => {
-  const PIV = [210, 280], TSPAN = 30, SMAX = 35, SHIFT = 40;   // the scene is drawn 40px lower so the tilted bowl clears the header
+  const PIV = [210, 280], SMAX = 35, SHIFT = 40;   // the scene is drawn 40px lower so the tilted bowl clears the header
   const scaleX = s => 60 + clamp(s, 0, 1) * 270;
   const arc = (cx, cy, r, a0, a1) => {
     const p = a => [cx + r * Math.sin(a), cy - r * Math.cos(a)];
@@ -231,7 +231,8 @@ const P = (() => {
     return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
   };
   let S;
-  const rate = () => clamp(((G.temp - 60) / 33) * (G.grams / 6), .4, 2.5);     // your earlier choices speed up or slow down the steep
+  const rate = () => clamp(((G.temp - 60) / 33) * (G.grams / 6), .4, 2.5);
+  const span = () => Math.max(30, Math.ceil(CFG.targets.steepHigh / rate() * 1.35 / 5) * 5);  // the dial stretches so the window always fits     // your earlier choices speed up or slow down the steep
   const win = () => [CFG.targets.steepLow / SMAX, CFG.targets.steepHigh / SMAX]; // target strength window
   function retry(on) { const r = $('pRetry'); r.setAttribute('opacity', on ? 1 : 0); r.style.pointerEvents = on ? 'auto' : 'none'; r.setAttribute('tabindex', on ? 0 : -1); }
   function reset() {
@@ -319,11 +320,11 @@ const P = (() => {
     $('pGuide').setAttribute('opacity', !S.done && S.phase === 'steep' && S.t * rt >= CFG.targets.steepLow && S.pv < .02 ? (.5 + .5 * Math.pow(Math.sin(S.clock * 3), 2)).toFixed(2) : 0);
 
     // ---- timer (seconds on the clock; the shaded window shifts with your water and leaf) ----
-    const w0 = CFG.targets.steepLow / rt, w1 = CFG.targets.steepHigh / rt;
-    $('pWin').setAttribute('d', arc(95, 600, 32, Math.min(w0, TSPAN - .1) / TSPAN * 2 * Math.PI, Math.min(w1, TSPAN - .05) / TSPAN * 2 * Math.PI));
+    const SP = span(), w0 = CFG.targets.steepLow / rt, w1 = CFG.targets.steepHigh / rt;
+    $('pWin').setAttribute('d', arc(95, 600, 32, Math.min(w0, SP - .1) / SP * 2 * Math.PI, Math.min(w1, SP - .05) / SP * 2 * Math.PI));
     $('pWinLbl').textContent = `${Math.round(w0)}–${Math.round(w1)} s`;
-    const tt = Math.min(S.t, TSPAN);
-    $('pArc').setAttribute('d', tt > .05 ? arc(95, 600, 32, 0, Math.min(tt / TSPAN, .9999) * 2 * Math.PI) : '');
+    const tt = Math.min(S.t, SP);
+    $('pArc').setAttribute('d', tt > .05 ? arc(95, 600, 32, 0, Math.min(tt / SP, .9999) * 2 * Math.PI) : '');
     $('pTxt').textContent = Math.floor(S.t) + 's';
     $('pWinBar').setAttribute('x', scaleX(W[0]) - 4); $('pWinBar').setAttribute('width', scaleX(W[1]) - scaleX(W[0]) + 8);
 

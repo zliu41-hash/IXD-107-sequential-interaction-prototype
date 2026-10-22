@@ -36,3 +36,8 @@ studies/              the three original Week 4 interaction studies, unchanged
 ```
 
 No build step and no server: everything runs directly in the browser.
+
+## Week 5 documentation
+
+`docs/week5/` holds the tool-panel screenshot and the three settings variations
+used in the Week 5 process document.
