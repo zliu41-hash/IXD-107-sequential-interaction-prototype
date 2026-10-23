@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Startle</title>
+<style>
+  :root{ --bg:#e6e6e6; --paper:#f7f7f5; --ink:#262626; --mid:#8e8e8e; --faint:#cfcfcf; }
+  *{box-sizing:border-box} html,body{height:100%;margin:0}
+  body{background:var(--bg);display:flex;align-items:center;justify-content:center;
+       font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);overflow:hidden}
+  .phone{height:min(844px,calc(100% - 20px));aspect-ratio:390/844;max-width:100%;
+         background:var(--paper);border-radius:34px;overflow:hidden;
+         box-shadow:0 0 0 1px var(--faint),0 24px 50px -28px rgba(0,0,0,.4)}
+  svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+  @media(max-width:430px){ .phone{height:100%;border-radius:0;box-shadow:none} }
+</style>
+</head>
+<body>
+<div class="phone">
+<svg id="stage" viewBox="0 0 390 844" aria-label="Touch the cat and its fur bristles">
+  <rect width="390" height="844" fill="var(--paper)"/>
+  <text x="34" y="74" font-size="13" letter-spacing="2.4" fill="var(--mid)">STUDY 1</text>
+  <text x="34" y="112" font-size="30" font-family="Georgia,serif" fill="var(--ink)">Startle</text>
+  <text x="34" y="142" font-size="13" fill="var(--mid)">bristly — press on the cat</text>
+
+  <!-- ground -->
+  <line x1="0" y1="512" x2="390" y2="512" stroke="var(--faint)" stroke-width="2"/>
+  <g id="cat" transform="translate(196 480) scale(1.38) translate(-196 -480)"></g>
+  <g id="zzz" fill="var(--mid)" font-size="16" transform="translate(196 480) scale(1.38) translate(-196 -480)"></g>
+
+  <!-- state readout, no score, no target -->
+  <text x="34" y="790" id="state" font-size="13" fill="var(--mid)">asleep</text>
+  <rect x="34" y="802" width="322" height="3" fill="var(--faint)"/>
+  <rect x="34" y="802" width="0" height="3" id="meter" fill="var(--ink)"/>
+</svg>
+</div>
+<script>
+(() => {
+const svg = document.getElementById('stage');
+const $ = id => document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pt = e => { const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
+
+const CX=196, CY=480;              // where the cat lies
+const S={ t:0, puff:0, touching:false, flick:0 };
+
+// spikes of fur standing up around the body outline
+function bristle(x,y,k){
+  if(k<=0.02) return '';
+  let s='';
+  for(let i=0;i<34;i++){
+    const a = Math.PI*(1.16 + i/33*0.92);          // along the top half of the body
+    const rx=54, ry=30;
+    const px = x + Math.cos(a)*rx, py = y - 6 + Math.sin(a)*ry;
+    const jitter = Math.sin(i*2.7 + S.t*18)*2.2*k;
+    const len = (7 + Math.sin(i*1.9)*4.5) * k + jitter;
+    const ex = px + Math.cos(a)*len, ey = py - 6 + Math.sin(a)*len;
+    s += `<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+
+function draw(){
+  const k=S.puff;
+  const breathe = Math.sin(S.t*(k>.4?3.4:1.1)) * (k>.4?1.4:2.8);
+  const lift = -k*10;                              // body rises when startled
+  const x=CX, y=CY+lift+breathe;
+  const ears = k*3;                                // ears flatten back
+  const tail = Math.sin(S.t*(6+k*9))*(6+k*22);
+
+  const eye = k<.25
+    ? `<path d="M${x-24} ${y-10} q5 4 10 0" fill="none" stroke="var(--paper)" stroke-width="2.5" stroke-linecap="round"/>`
+    : `<circle cx="${x-19}" cy="${y-11}" r="${(2.2+k*2.4).toFixed(1)}" fill="var(--paper)"/>`;
+
+  $('cat').innerHTML = `
+  <ellipse cx="${x}" cy="${CY+22}" rx="${(48+k*8).toFixed(0)}" ry="8" fill="#000" opacity=".13"/>
+  ${bristle(x,y,k)}
+  <path d="M${x+42} ${y+8} q${(26+tail*.4).toFixed(1)} ${(-6-k*16).toFixed(1)} ${(14+tail*.5).toFixed(1)} ${(-28-k*10).toFixed(1)}"
+        fill="none" stroke="var(--ink)" stroke-width="${(7+k*3).toFixed(1)}" stroke-linecap="round"/>
+  <path d="M${x-48} ${y+14} q-6 -32 26 -38 q34 -6 48 14 q15 21 -6 28 q-34 10 -68 -4 Z" fill="var(--ink)"/>
+  <circle cx="${x-17}" cy="${y-9}" r="18" fill="var(--ink)" stroke="var(--paper)" stroke-width="2.2"/>
+  <path d="M${x-32} ${y-20} l${(-3+ears).toFixed(1)} ${(-15+ears*2.1).toFixed(1)} l15 6 Z" fill="var(--ink)" stroke="var(--paper)" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M${x-7} ${y-23} l${(6-ears).toFixed(1)} ${(-14+ears*2.1).toFixed(1)} l9 10 Z" fill="var(--ink)" stroke="var(--paper)" stroke-width="1.6" stroke-linejoin="round"/>
+  ${eye}
+  <path d="M${x-17} ${y-3} l-3 3 l3 2 l3 -2 Z" fill="var(--paper)"/>
+  <g stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round" opacity="${(0.35+k*0.65).toFixed(2)}">
+    <path d="M${x-26} ${y-2} l${(-16-k*8).toFixed(1)} ${(2-k*7).toFixed(1)}"/>
+    <path d="M${x-26} ${y+2} l${(-17-k*8).toFixed(1)} ${(5+k*4).toFixed(1)}"/>
+  </g>`;
+
+  // sleep marks only while settled
+  if(k<.12){
+    let z='';
+    for(let i=0;i<3;i++){ const p=((S.t*.35+i*.33)%1);
+      z+=`<text x="${(x+34+p*26).toFixed(0)}" y="${(y-34-p*66).toFixed(0)}" font-size="${13+i*5}" opacity="${((1-p)*.85*(1-k/.12)).toFixed(2)}">z</text>`; }
+    $('zzz').innerHTML=z;
+  } else $('zzz').innerHTML='';
+
+  $('meter').setAttribute('width', (322*k).toFixed(1));
+  $('state').textContent = k>.75 ? 'bristling' : k>.3 ? 'waking' : k>.08 ? 'settling' : 'asleep';
+}
+
+// --- input: press on the cat ---
+const onCat = p => Math.hypot(p.x-CX,(p.y-CY)*1.4) < 104;
+svg.addEventListener('pointerdown', e=>{ const p=pt(e); if(onCat(p)){ S.touching=true; svg.setPointerCapture(e.pointerId); } });
+svg.addEventListener('pointermove', e=>{ if(S.touching){ const p=pt(e); if(!onCat(p)) S.touching=false; } });
+addEventListener('pointerup', ()=>S.touching=false);
+addEventListener('pointercancel', ()=>S.touching=false);
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now; S.t+=dt;
+  // startles fast, settles slowly — it always goes back to sleep
+  S.puff = S.touching ? clamp(S.puff+dt*4.2,0,1) : clamp(S.puff-dt*0.85,0,1);
+  draw(); requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.CAT=()=>S;
+})();
+</script>
+</body>
+</html>

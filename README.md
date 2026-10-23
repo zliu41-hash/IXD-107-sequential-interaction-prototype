@@ -1,39 +1,64 @@
-# Cat Naps — sequential interaction prototype
+# Cat Naps — Night Shift
 
-Project 2 interaction prototype for IXD 107, built with Claude Code and published with GitHub Pages.
+A wet back street under one sodium lamp, and a cat who sleeps wherever she ends up.
 
-**Live prototype:** open `index.html` on this repository's GitHub Pages site.
+**Live:** https://zliu41-hash.github.io/IXD-107-sequential-interaction-prototype/
 
-## The sequence
+IXD 107 · Project 2, Sequential Interactions · Alice Liu · faculty: Samson Klitsner
 
-Get a cat to fall asleep by making one corner of a room worth sleeping in. Each step unlocks only after the one before it holds, and the choices carry forward.
+---
 
-| Step | Gesture | Goal | What carries forward |
-|---|---|---|---|
-| 1. Open the curtain | Drag the curtain's pull | Lay the sunbeam across the rug — not so wide it glares | How warm the room looks |
-| 2. Smooth the cushion | Swipe back and forth | Flatten the lumps but leave the loft | How quickly the cat settles |
-| 3. Hush the room | Press and hold anywhere | Hold until the breathing evens out | — |
-| Asleep | — | A summary of light, loft and hush | — |
+## What it is
 
-No obvious buttons. The curtain has a pull, the cushion has lumps and loose fibres, the noise sources send out rings — and the cat is the progress bar: it turns its head, walks over, kneads, half-closes its eyes.
+One scene. It never cuts away, there is no progress bar, nothing to complete and no way
+to get it wrong. The sun and moon keep crossing whether or not anyone is watching, so the
+piece is as much a window as a toy.
 
-## Tool panel ("Room tuning")
+Three things you can do, and the cat decides what they mean:
 
-Press **T** (or open the page with `#tools`) to show a panel for colours, motion and targets.
-**Copy settings** produces a prompt for Claude Code that writes the values into `js/config.js` as the saved defaults.
-The panel is hidden by default for demos.
+| | you do | she does |
+|---|---|---|
+| **Startle** | press on her | wakes with a jolt, fur standing on end, whiskers out |
+| **Carry** | drag her anywhere on the street | goes limp in the air, then stretches once and sleeps where you let go |
+| **Coax** | drag the fish out and drop it | gets up, walks over, eats, and sleeps where she ate |
 
-## Files
+Each one leads into the next: she has to notice you before she will follow a fish, and she
+only settles once she has nothing left to do. After dark she gets restless and moves herself.
+
+## Running it
+
+Open `index.html`. Nothing to build and no dependencies — one SVG, three scripts.
+
+Press **T** (or add `#tools` to the address) for the **Street tuning** panel: light and
+colour, the pace of the day, how wet the road is, how much she bristles, how far she wanders
+after dark. *Copy settings* writes a prompt you can paste back into Claude Code to save the
+values into `js/config.js`.
+
+## Layout
 
 ```
-index.html            the final prototype (GitHub Pages serves this)
-css/style.css         layout and panel styles
-js/config.js          saved defaults (colours, motion, targets)
-js/app.js             the sequence: curtain → cushion → hush → asleep
-js/panel.js           the "Room tuning" tool panel
-studies/              the three Week 4 interaction studies, unchanged
-docs/week5/           screenshots used in the Week 5 process document
-.nojekyll             tells GitHub Pages to serve files as they are
+index.html        the whole stage, as one SVG
+css/style.css     palette, the phone frame, the panel
+js/config.js      saved defaults — the only file the panel ever changes
+js/app.js         the street, the cat, and what she does about you
+js/panel.js       the tuning panel
+studies/          the three Week 4 interaction studies, each standing alone
+docs/week5/       screenshots across the day
 ```
 
-No build step and no server: everything runs directly in the browser.
+## Week 4 studies
+
+| study | quality | gesture |
+|---|---|---|
+| [01 · Startle](studies/01-startle/) | bristly | press |
+| [02 · Sun and Moon](studies/02-sun-and-moon/) | drowsy | drag the sky |
+| [03 · Anywhere](studies/03-anywhere/) | heavy | drag and let go |
+
+Built grayscale, on purpose: they test behaviour before the final prototype gives it a palette.
+
+## Notes on the design
+
+The cat is the only true black in the frame. Everything else is light — the lamp's cone,
+the pool it makes on wet asphalt, her reflection wobbling in it, the drizzle that only shows
+where the light catches it. The palette is sodium orange against petrol blue, the two colours
+a real street actually has at night, and it burns through orange at dawn and dusk.

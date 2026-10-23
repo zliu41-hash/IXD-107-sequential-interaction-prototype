@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sun and Moon</title>
+<style>
+  :root{ --bg:#e6e6e6; --paper:#f7f7f5; --ink:#262626; --mid:#8e8e8e; --faint:#cfcfcf; --night:#dadada; }
+  *{box-sizing:border-box} html,body{height:100%;margin:0}
+  body{background:var(--bg);display:flex;align-items:center;justify-content:center;
+       font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);overflow:hidden}
+  .phone{height:min(844px,calc(100% - 20px));aspect-ratio:390/844;max-width:100%;
+         background:var(--paper);border-radius:34px;overflow:hidden;
+         box-shadow:0 0 0 1px var(--faint),0 24px 50px -28px rgba(0,0,0,.4)}
+  svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+  @media(max-width:430px){ .phone{height:100%;border-radius:0;box-shadow:none} }
+</style>
+</head>
+<body>
+<div class="phone">
+<svg id="stage" viewBox="0 0 390 844" aria-label="Drag the sky between moon and sun">
+  <rect id="sky" width="390" height="844" fill="var(--paper)"/>
+  <text x="34" y="74" font-size="13" letter-spacing="2.4" fill="var(--mid)">STUDY 2</text>
+  <text x="34" y="112" font-size="30" font-family="Georgia,serif" fill="var(--ink)">Sun and Moon</text>
+  <text x="34" y="142" font-size="13" fill="var(--mid)">drowsy — drag the sky across</text>
+
+  <path id="arc" fill="none" stroke="var(--faint)" stroke-width="2" stroke-dasharray="3 7"/>
+  <g id="body"></g>
+
+  <line x1="0" y1="640" x2="390" y2="640" stroke="var(--faint)" stroke-width="2"/>
+  <g id="cat" transform="translate(196 600) scale(1.3) translate(-196 -600)"></g>
+  <g id="zzz" fill="var(--mid)" font-size="16" transform="translate(196 600) scale(1.3) translate(-196 -600)"></g>
+
+  <text x="34" y="790" id="state" font-size="13" fill="var(--mid)">—</text>
+</svg>
+</div>
+<script>
+(() => {
+const svg=document.getElementById('stage'), $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pt=e=>{const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());};
+
+// the arc the sun / moon rides along
+const AX0=78, AX1=312, AY=310, AR=116;
+const arcPt = u => ({ x: AX0+(AX1-AX0)*u, y: AY - Math.sin(u*Math.PI)*AR });
+$('arc').setAttribute('d', (()=>{ let d=''; for(let i=0;i<=40;i++){ const p=arcPt(i/40); d+=(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1); } return d; })());
+
+// u = 0 moon (left)  ->  1 sun (right).  sleepy follows u with lag.
+const S={ t:0, u:0.12, sleepy:0, drag:false, walk:0, dir:1, px:150, settle:0 };
+
+function drawBody(){
+  const p=arcPt(S.u), sun=S.u, moon=1-S.u;
+  let s=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="27" fill="var(--paper)" stroke="var(--ink)" stroke-width="2.5"/>`;
+  // sun rays fade in to the right
+  if(sun>.02){ let r=''; for(let i=0;i<12;i++){ const a=i/12*Math.PI*2+S.t*.25;
+      const l=34+Math.sin(S.t*2+i)*2.5;
+      r+=`<line x1="${(p.x+Math.cos(a)*31).toFixed(1)}" y1="${(p.y+Math.sin(a)*31).toFixed(1)}" x2="${(p.x+Math.cos(a)*l).toFixed(1)}" y2="${(p.y+Math.sin(a)*l).toFixed(1)}" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>`; }
+    s+=`<g opacity="${sun.toFixed(2)}">${r}</g>`;
+    s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="27" fill="var(--ink)" opacity="${(sun*.9).toFixed(2)}"/>`;
+  }
+  // moon bite fades in to the left
+  if(moon>.02) s+=`<circle cx="${(p.x+13).toFixed(1)}" cy="${(p.y-7).toFixed(1)}" r="23" fill="var(--paper)" opacity="${moon.toFixed(2)}"/>`;
+  // a few stars at night
+  if(moon>.3){ const st=[[70,210],[122,162],[300,188],[256,140],[338,246],[92,268]];
+    s+=st.map((q,i)=>`<circle cx="${q[0]}" cy="${q[1]}" r="${(1.6+Math.sin(S.t*2+i)*.6).toFixed(1)}" fill="var(--ink)" opacity="${((moon-.3)/.7*.55).toFixed(2)}"/>`).join(''); }
+  $('body').innerHTML=s;
+  $('sky').setAttribute('fill', moon>.5 ? 'var(--night)' : 'var(--paper)');
+}
+
+function catCurl(x,y,t,ears,breathe){
+  const b=Math.sin(t*1.1)*2.6*breathe;
+  return `<ellipse cx="${x}" cy="${y+20}" rx="48" ry="8" fill="#000" opacity=".13"/>
+  <g transform="translate(0 ${b.toFixed(2)})">
+  <path d="M${x-48} ${y+14} q-6 -32 26 -38 q34 -6 48 14 q15 21 -6 28 q-34 10 -68 -4 Z" fill="var(--ink)"/>
+  <circle cx="${x-17}" cy="${y-9}" r="18" fill="var(--ink)"/>
+  <path d="M${x-32} ${y-20} l${(-3+ears).toFixed(1)} ${(-15+ears*2).toFixed(1)} l15 6 Z" fill="var(--ink)"/>
+  <path d="M${x-7} ${y-23} l${(6-ears).toFixed(1)} ${(-14+ears*2).toFixed(1)} l9 10 Z" fill="var(--ink)"/>
+  <path d="M${x-22} ${y-10} q5 4 10 0" fill="none" stroke="var(--paper)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M${x-17} ${y-3} l-3 3 l3 2 l3 -2 Z" fill="var(--paper)"/></g>`;
+}
+function catWalk(x,y,t,dir){
+  const f=dir<0?-1:1;
+  return `<g transform="translate(${x} ${y}) scale(${f} 1) translate(${-x} ${-y})">
+  <ellipse cx="${x+2}" cy="${y+22}" rx="30" ry="6" fill="#000" opacity=".13"/>
+  <path d="M${x+26} ${y+6} q22 ${(-10+Math.sin(t*5)*8).toFixed(1)} 16 -26" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M${x-22} ${y+18} q-6 -34 14 -40 q26 -8 34 16 q6 22 -6 24 Z" fill="var(--ink)"/>
+  <path d="M${x-14} ${y+16} l${(Math.sin(t*9)*5).toFixed(1)} 14 M${x+2} ${y+16} l${(Math.sin(t*9+3)*5).toFixed(1)} 14" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="${x-4}" cy="${y-22}" r="19" fill="var(--ink)"/>
+  <path d="M${x-20} ${y-33} l-2 -16 l15 7 Z" fill="var(--ink)"/>
+  <path d="M${x+6} ${y-36} l6 -15 l9 11 Z" fill="var(--ink)"/>
+  <circle cx="${x-11}" cy="${y-26}" r="2.4" fill="var(--paper)"/><circle cx="${x+3}" cy="${y-26}" r="2.4" fill="var(--paper)"/></g>`;
+}
+function catSit(x,y,t){
+  return `<ellipse cx="${x+2}" cy="${y+22}" rx="30" ry="6" fill="#000" opacity=".13"/>
+  <path d="M${x+24} ${y+14} q26 6 20 -14" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M${x-22} ${y+18} q-6 -34 14 -40 q26 -8 34 16 q6 22 -6 24 Z" fill="var(--ink)"/>
+  <circle cx="${x-4}" cy="${y-22}" r="19" fill="var(--ink)"/>
+  <path d="M${x-20} ${y-33} l-2 -16 l15 7 Z" fill="var(--ink)"/>
+  <path d="M${x+6} ${y-36} l6 -15 l9 11 Z" fill="var(--ink)"/>
+  <path d="M${x-15} ${y-26} h8 M${x-1} ${y-26} h8" stroke="var(--paper)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M${x-4} ${y-18} l-3 3 l3 2 l3 -2 Z" fill="var(--paper)"/>`;
+}
+
+function draw(){
+  drawBody();
+  const k=S.sleepy, y=612;
+  if(k>.72){                                   // sunlight: lying down, asleep
+    $('cat').innerHTML=catCurl(S.px,y,S.t,(k-.72)/.28*2.2,1-k*.35);
+    let z=''; for(let i=0;i<3;i++){ const p=((S.t*.35+i*.33)%1);
+      z+=`<text x="${(S.px+34+p*26).toFixed(0)}" y="${(y-34-p*66).toFixed(0)}" font-size="${13+i*5}" opacity="${((1-p)*.85*((k-.72)/.28)).toFixed(2)}">z</text>`; }
+    $('zzz').innerHTML=z;
+  } else if(k>.42){                            // in between: sitting, blinking
+    $('cat').innerHTML=catSit(S.px,y-8,S.t); $('zzz').innerHTML='';
+  } else {                                     // moonlight: up and moving
+    $('cat').innerHTML=catWalk(S.px,y-10,S.t,S.dir); $('zzz').innerHTML='';
+  }
+  $('state').textContent = k>.72 ? 'asleep in the sun' : k>.42 ? 'settling' : 'awake, on the move';
+}
+
+// --- input: drag the sky ---
+const grab=e=>{ S.drag=true; svg.setPointerCapture(e.pointerId); move(e); };
+const move=e=>{ if(!S.drag) return; const p=pt(e); S.u=clamp((p.x-AX0)/(AX1-AX0),0,1); };
+svg.addEventListener('pointerdown',grab);
+svg.addEventListener('pointermove',move);
+addEventListener('pointerup',()=>S.drag=false);
+addEventListener('pointercancel',()=>S.drag=false);
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now; S.t+=dt;
+  // sleepiness chases the sun, slowly — cats are not switches
+  S.sleepy += (S.u - S.sleepy) * dt * 1.15;
+  if(S.sleepy<=.42){                           // wander while awake
+    S.px += S.dir*dt*38;
+    if(S.px>296){S.px=296;S.dir=-1;} if(S.px<96){S.px=96;S.dir=1;}
+  }
+  draw(); requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.CAT=()=>S;
+})();
+</script>
+</body>
+</html>
