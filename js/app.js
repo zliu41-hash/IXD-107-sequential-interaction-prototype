@@ -78,7 +78,8 @@ const S = {
   cat: { x: 200, y: 648, wake: 0, puff: 0, stretch: 0, face: -1, bob: 0 },
   held: false, carrying: false, grabDX: 0, grabDY: 0, moved: 0,
   fish: { out: false, held: false, x: 268, y: 736, left: 1 },
-  mode: 'rest', target: null, eat: 0, idle: 999, trayIn: 0, win: 0,   // idle starts high: she begins asleep
+  mode: 'rest', target: null, eat: 0, idle: 999, win: 0,   // idle starts high: she begins asleep
+  fishEaten: false,                                        // once she has had it, there is no more fish
   drowsy: 1, touched: false, flick: 1
 };
 const cache = { key: {}, html: {} };
@@ -352,7 +353,7 @@ function drawCat(d){
 // ---- the fish --------------------------------------------------------------
 function drawFish(){
   const f = S.fish;
-  const x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y, w = f.out ? f.left : (S.trayIn > 0 ? 0 : 1);
+  const x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y, w = f.out ? f.left : (S.fishEaten ? 0 : 1);
   const wob = f.held ? Math.sin(S.t*9)*6 : Math.sin(S.t*1.6)*1.6;
   $('fish').innerHTML = w <= .02 ? '' : `
     <g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${(.6+w*.5).toFixed(2)})">
@@ -364,7 +365,7 @@ function drawFish(){
     <g transform="translate(${x.toFixed(1)} ${(y+14).toFixed(1)}) scale(${(.6+w*.5).toFixed(2)} ${(-(.6+w*.5)*.5).toFixed(2)})" filter="url(#wet)">
       <path d="M-17 0 q10 -13 22 0 q-12 13 -22 0 Z" fill="${CFG.colors.sodium}"/></g>`;
   $('fishRef').setAttribute('opacity', f.out ? (CFG.scene.reflection*0.8).toFixed(2) : '0');
-  $('tray').innerHTML = (f.out || S.trayIn > 0) ? '' : `
+  $('tray').innerHTML = (f.out || S.fishEaten) ? '' : `
     <circle cx="${TRAY.x}" cy="${TRAY.y}" r="30" fill="none" stroke="${CFG.colors.sodium}"
             stroke-width="1.6" stroke-dasharray="3 7" opacity="${(.4+Math.sin(S.t*1.8)*.2).toFixed(2)}"/>`;
   $('ping').innerHTML = PING.map(q =>
@@ -398,7 +399,7 @@ function think(dt){
   if(S.mode === 'eat'){
     S.eat -= dt;
     S.fish.left = clamp(S.eat / CFG.cat.appetite, 0, 1);
-    if(S.eat <= 0){ S.fish.out = false; S.fish.left = 0; S.trayIn = 3.2;   // eaten: nothing left on the street
+    if(S.eat <= 0){ S.fish.out = false; S.fish.left = 0; S.fishEaten = true;   // that was the only one
                     S.mode = 'rest'; c.stretch = 1; }
   }
 
@@ -415,7 +416,6 @@ function think(dt){
 
   for(const cl of CLOUD){ cl.x += cl.v*dt*CFG.scene.cloud; if(cl.x - cl.w > W) cl.x = -cl.w; }
 
-  if(S.trayIn > 0){ S.trayIn -= dt; if(S.trayIn <= 0) S.fish.left = 1; }
   S.win += dt;
 
   for(let i=PING.length-1;i>=0;i--){ PING[i].a += dt*1.6; if(PING[i].a >= 1) PING.splice(i,1); }
@@ -433,7 +433,8 @@ function think(dt){
 
 // ---- input -----------------------------------------------------------------
 const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.3) < 96;
-const onFish = p => { const f = S.fish, x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y;
+const onFish = p => { if(S.fishEaten) return false;
+                      const f = S.fish, x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y;
                       return Math.hypot(p.x - x, p.y - y) < 40; };
 const hideTitle = () => { if(!S.touched){ S.touched = true; $('titleG').classList.add('gone'); } };
 const noticed = () => { S.idle = 0; };      // anything you do buys her another ten seconds
@@ -507,6 +508,6 @@ requestAnimationFrame(frame);
 window.CAT  = () => S;
 window.CATP = { CFG, applyColors, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
                 reset(){ Object.assign(S.cat, { x: Math.round(W*0.42), y: 648, wake: 0, puff: 0, stretch: 0, face: -1 });
-                         S.fish.out = false; S.fish.left = 1; S.mode = 'rest';
+                         S.fish.out = false; S.fish.left = 1; S.fishEaten = false; S.mode = 'rest';
                          S.idle = 999; S.target = null; S.held = S.carrying = false; } };
 })();

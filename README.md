@@ -22,7 +22,7 @@ happens to be standing.
 |---|---|
 | **click her** | wakes with a jolt, fur standing on end, whiskers out |
 | **click anywhere on the street** | walks there and settles on the spot |
-| **click the fish** | it drops onto the street, she runs over at twice her walking speed, crouches, and eats it until it is gone |
+| **click the fish** | it drops onto the street, she runs over at twice her walking speed, crouches and eats it — there is only one, and once it is gone the corner is just street again |
 | **drag her** | goes limp in the air, then stretches once and sleeps where you let go |
 | **drag the fish** | put it anywhere you like first; she comes to wherever it lands |
 | **do nothing for ten seconds** | curls up and goes back to sleep |
