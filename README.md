@@ -59,7 +59,7 @@ docs/week5/       screenshots across the day
 | study | quality | gesture |
 |---|---|---|
 | [01 · Startle](studies/01-startle/) | bristly | press |
-| [02 · Sun and Moon](studies/02-sun-and-moon/) | drowsy | drag the sky |
+| [02 · Coax](studies/02-coax/) | sleek | put the fish down |
 | [03 · Anywhere](studies/03-anywhere/) | heavy | drag and let go |
 
 Built grayscale, on purpose: they test behaviour before the final prototype gives it a palette.
