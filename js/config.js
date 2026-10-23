@@ -13,10 +13,11 @@ window.CAT_DEFAULTS = {
   },
   motion: {
     dayLength:   110,       // seconds for a whole day and night
-    settleDelay: 0.4,       // seconds left alone before she lies back down — leave her and she goes straight back
+    sleepAfter:  10,        // seconds with nobody touching her before she lies down and sleeps
     wakeSpeed:   4.4,       // how sharply it startles
     sleepSpeed:  2.6,       // how fast she drops back to sleep once you stop
-    walkSpeed:   74         // px per second when it goes to the fish
+    walkSpeed:   74,        // px per second when she is walking somewhere you sent her
+    runSpeed:    150        // px per second when she has seen the fish
   },
   scene: {
     reflection:  0.42,      // how much the wet road gives back
@@ -29,7 +30,6 @@ window.CAT_DEFAULTS = {
   cat: {
     size:        1.25,      // how big the cat is drawn
     bristle:     1,         // how far the fur stands up
-    nightRoam:   1,         // how restless she is once it gets dark (0 = sleeps through the night too)
     appetite:    2.2        // seconds spent eating before lying down again
   }
 };

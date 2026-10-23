@@ -30,14 +30,14 @@ const KERB = 470, FLOOR = 844;
 let W = 390;                                   // design width; height is always 844
 let LAMP = { post: 300, head: 266, top: 292, base: 476 };
 let PEN  = { x0: 50, x1: 340, y0: 520, y1: 772 };
-let TRAY = { x: 324, y: 788 };
+let TRAY = { x: 268, y: 736 };
 let STARS = [], FAR = [], NEAR = [], RAIN = [], PUDDLE = [], CLOUD = [];
 const SPLASH = [], PING = [];
 
 function buildWorld(){
   LAMP = { post: Math.round(W*0.78), head: Math.round(W*0.78) - 34, top: 292, base: 476 };
   PEN  = { x0: 54, x1: W - 54, y0: 520, y1: 778 };
-  TRAY = { x: W - 72, y: 788 };
+  TRAY = { x: W - 122, y: 736 };   // far enough in that she is never cut off while she eats
 
   STARS = [];
   for(let i=0;i<Math.round(W/11);i++) STARS.push({ x: rnd(6,W-6), y: rnd(26,430), r: rnd(.6,1.7), p: rnd(0,7) });
@@ -77,8 +77,8 @@ const S = {
   t: 0, day: 0.60,                               // 0 dawn · .25 noon · .5 dusk · .75 midnight
   cat: { x: 200, y: 648, wake: 0, puff: 0, stretch: 0, face: -1, bob: 0 },
   held: false, carrying: false, grabDX: 0, grabDY: 0, moved: 0,
-  fish: { out: false, held: false, x: 324, y: 788, left: 1 },
-  mode: 'rest', target: null, eat: 0, idle: 0, roamIn: 5, pause: 0, trayIn: 0, win: 0,
+  fish: { out: false, held: false, x: 268, y: 736, left: 1 },
+  mode: 'rest', target: null, eat: 0, idle: 999, trayIn: 0, win: 0,   // idle starts high: she begins asleep
   drowsy: 1, touched: false, flick: 1
 };
 const cache = { key: {}, html: {} };
@@ -250,8 +250,6 @@ function drawCat(d){
   const c = S.cat, k = c.puff, w = c.wake;
   const sz = CFG.cat.size * clamp(1 + (W/390 - 1)*0.17, 1, 1.75);
   const night = 1 - d;
-  const reach = clamp(1 - Math.hypot(c.x - LAMP.head, (c.y - 680)*0.6) / 280, 0.05, 1);
-  const rim = clamp(night*1.4, 0, 1) * S.flick * reach;
 
   const tf = `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) scale(${(c.face*sz).toFixed(3)} ${sz}) translate(${(-c.x).toFixed(1)} ${(-c.y).toFixed(1)})`;
   $('catArt').setAttribute('transform', tf);
@@ -306,29 +304,19 @@ function drawCat(d){
   const hr = (walking || sitting) ? 19 : 18;
   const blink = Math.sin(S.t*0.83) > .988 || Math.sin(S.t*1.41 + 2) > .991;
   const open = (walking || sitting || w > .3 || k > .25) && !(blink && k < .3);
-  const eyeCol = rim > .32 ? CFG.colors.sodium : '#eaf1ee';
+  const eyeCol = '#eaf1ee';          // nothing on her glows: she stays a silhouette
   const two = walking || sitting;
   const eye = open
     ? `<circle cx="${hx-8}" cy="${hy-2}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${hy-2}" r="2.4" fill="${eyeCol}"/>`:''}`
     : `<path d="M${hx-13} ${hy-1} q5 4 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
 
-  const sd = (LAMP.head - c.x) >= 0 ? 1 : -1;
-  const unflip = `translate(${x.toFixed(1)} 0) scale(${c.face} 1) translate(${(-x).toFixed(1)} 0)`;
-  const shx = x + (hx - x)*c.face;
-  const rimLine = rim < .08 ? '' : `
-    <g transform="${unflip}" fill="none" stroke="${CFG.colors.sodium}" stroke-linecap="round" opacity="${(rim*.95).toFixed(2)}">
-      <path stroke-width="2.4" d="M${(shx+hr*0.34*sd).toFixed(1)} ${(hy-hr*0.94).toFixed(1)}
-            A ${hr} ${hr} 0 0 ${sd>0?1:0} ${(shx+hr*0.57*sd).toFixed(1)} ${(hy+hr*0.82).toFixed(1)}"/>
-      <path stroke-width="2.2" d="M${(x+26*sd).toFixed(1)} ${(y-26).toFixed(1)} q${(16*sd).toFixed(1)} 9 ${(14*sd).toFixed(1)} 28"/>
-    </g>`;
-
   $('catArt').innerHTML = `${body}
     <circle cx="${hx}" cy="${hy}" r="${hr}" fill="var(--cat)"/>
     <path d="M${hx-15} ${hy-11} l${(-3+ears).toFixed(1)} ${(-15+ears*2.1).toFixed(1)} l15 6 Z" fill="var(--cat)"/>
     <path d="M${hx+10} ${hy-14} l${(6-ears).toFixed(1)} ${(-14+ears*2.1).toFixed(1)} l9 10 Z" fill="var(--cat)"/>
-    ${rimLine}${eye}
+    ${eye}
     <path d="M${hx} ${hy+6} l-3 3 l3 2 l3 -2 Z" fill="${eyeCol}" opacity=".75"/>
-    <g stroke="${rim>.32?CFG.colors.sodium:'#cfdcd7'}" stroke-width="1.5" stroke-linecap="round" opacity="${(.28+k*.62).toFixed(2)}">
+    <g stroke="#cfdcd7" stroke-width="1.5" stroke-linecap="round" opacity="${(.28+k*.62).toFixed(2)}">
       <path d="M${hx-9} ${hy+7} l${(-16-k*9).toFixed(1)} ${(1-k*7).toFixed(1)}"/>
       <path d="M${hx-9} ${hy+11} l${(-17-k*9).toFixed(1)} ${(5+k*4).toFixed(1)}"/>
     </g>`;
@@ -342,7 +330,7 @@ function drawCat(d){
     let z = '';
     for(let i=0;i<3;i++){ const p = ((S.t*.35 + i*.33) % 1);
       z += `<text x="${(x+36+p*24).toFixed(0)}" y="${(y-32-p*62).toFixed(0)}" font-family="Fraunces, Georgia, serif"
-              font-size="${13+i*5}" fill="${rim > .32 ? CFG.colors.sodium : (d > .45 ? '#2b4440' : '#d8e4e0')}"
+              font-size="${13+i*5}" fill="${d > .45 ? '#2b4440' : '#d8e4e0'}"
               opacity="${((1-p)*.62).toFixed(2)}">z</text>`; }
     $('zzz').innerHTML = z;
   } else $('zzz').innerHTML = '';
@@ -376,45 +364,34 @@ function drawFish(){
 function think(dt){
   const c = S.cat, M = CFG.motion, d = daylight();
 
-  // she lags the sun by a good few seconds: sleepy in daylight, up after dark
-  S.drowsy += (d - S.drowsy) * dt * 0.7;
-  const nightUp = S.drowsy < 0.45 && CFG.cat.nightRoam > 0;
+  S.idle += dt;                       // time since you last did anything to her
 
   if(S.held){ S.mode = 'held'; S.idle = 0; }
   else if(S.fish.out && !S.fish.held && S.fish.left > .02 && S.mode !== 'eat'){
-    S.mode = 'walk'; S.target = { x: S.fish.x - 32, y: S.fish.y }; S.idle = 0; S.pause = 0;
+    // she stops a body's length short, so she eats beside the fish rather than on top of it
+    const side = S.fish.x > W*0.5 ? -1 : 1;
+    S.mode = 'run'; S.target = { x: clamp(S.fish.x + side*74, PEN.x0, PEN.x1),
+                                 y: clamp(S.fish.y, PEN.y0, PEN.y1) };
   }
 
-  if(S.mode === 'walk' && S.target){
+  if((S.mode === 'walk' || S.mode === 'run') && S.target){
     const dx = S.target.x - c.x, dy = S.target.y - c.y, dd = Math.hypot(dx, dy);
     if(dd > 4) c.face = dx < 0 ? -1 : 1;
     if(dd < 6){ S.mode = (S.fish.out && S.fish.left > .02) ? 'eat' : 'rest';
-                S.eat = CFG.cat.appetite; S.target = null; S.idle = 0; S.pause = rnd(2,6); }
-    else { const v = M.walkSpeed*dt; c.x += dx/dd*v; c.y += dy/dd*v; }
+                S.eat = CFG.cat.appetite; S.target = null; if(S.mode === 'rest') c.stretch = 1; }
+    else { const v = (S.mode === 'run' ? M.runSpeed : M.walkSpeed)*dt; c.x += dx/dd*v; c.y += dy/dd*v; }
   }
 
   if(S.mode === 'eat'){
     S.eat -= dt;
     S.fish.left = clamp(S.eat / CFG.cat.appetite, 0, 1);
     if(S.eat <= 0){ S.fish.out = false; S.fish.left = 0; S.trayIn = 3.2;   // eaten: nothing left on the street
-                    S.mode = 'rest'; S.idle = 0; c.stretch = 1; S.pause = rnd(2,5); }
+                    S.mode = 'rest'; c.stretch = 1; }
   }
 
-  if(S.mode === 'rest'){
-    S.idle += dt;
-    if(nightUp && S.idle > M.settleDelay){
-      S.pause -= dt * CFG.cat.nightRoam;
-      if(S.pause <= 0){
-        S.pause = rnd(3,8);
-        S.mode  = 'walk';
-        S.target = { x: rnd(PEN.x0+30, PEN.x1-30), y: rnd(PEN.y0+20, PEN.y1-20) };
-      }
-    }
-  }
-
-  // daylight puts her out; after dark she stays up unless you are holding her
-  const busy  = S.held || S.mode === 'walk' || S.mode === 'eat' || c.puff > .3;
-  const awake = busy || (S.mode === 'rest' && nightUp);
+  // she is awake while something is happening, and for CFG.motion.sleepAfter seconds after it
+  const busy  = S.held || S.mode === 'walk' || S.mode === 'run' || S.mode === 'eat' || c.puff > .3;
+  const awake = busy || S.idle < M.sleepAfter;
   c.wake = awake ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
 
   if(!S.held) c.puff = clamp(c.puff - dt*2.4, 0, 1);
@@ -446,9 +423,10 @@ const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.3) < 96;
 const onFish = p => { const f = S.fish, x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y;
                       return Math.hypot(p.x - x, p.y - y) < 40; };
 const hideTitle = () => { if(!S.touched){ S.touched = true; $('titleG').classList.add('gone'); } };
+const noticed = () => { S.idle = 0; };      // anything you do buys her another ten seconds
 
 svg.addEventListener('pointerdown', e => {
-  const p = toSvg(e); hideTitle();
+  const p = toSvg(e); hideTitle(); noticed();
   if(onFish(p)){ S.fish.held = true; S.fish.out = true; S.fish.left = 1;
                  S.fish.x = p.x; S.fish.y = p.y; svg.setPointerCapture(e.pointerId); return; }
   if(onCat(p)){
@@ -461,7 +439,7 @@ svg.addEventListener('pointerdown', e => {
   }
   // anywhere else on the street: she goes there
   if(p.y > KERB + 20){
-    S.mode = 'walk'; S.idle = 0; S.pause = rnd(3,7);
+    S.mode = 'walk';
     S.target = { x: clamp(p.x, PEN.x0, PEN.x1), y: clamp(p.y, PEN.y0, PEN.y1) };
     PING.push({ x: S.target.x, y: S.target.y, a: 0 });
   }
@@ -469,8 +447,9 @@ svg.addEventListener('pointerdown', e => {
 
 svg.addEventListener('pointermove', e => {
   const p = toSvg(e);
-  if(S.fish.held){ S.fish.x = clamp(p.x, 30, W-30); S.fish.y = clamp(p.y, PEN.y0-30, FLOOR-24); return; }
+  if(S.fish.held){ noticed(); S.fish.x = clamp(p.x, 30, W-30); S.fish.y = clamp(p.y, PEN.y0-30, FLOOR-24); return; }
   if(!S.held) return;
+  noticed();
   const nx = clamp(p.x + S.grabDX, PEN.x0, PEN.x1), ny = clamp(p.y + S.grabDY, PEN.y0, PEN.y1);
   S.moved += Math.hypot(nx - S.cat.x, ny - S.cat.y);
   if(S.moved > 10) S.carrying = true;
@@ -481,8 +460,7 @@ svg.addEventListener('pointermove', e => {
 
 function release(){
   if(S.fish.held){ S.fish.held = false; return; }
-  if(S.held){ S.held = false; S.carrying = false; S.mode = 'rest';
-              S.idle = 0; S.pause = rnd(2,5); S.cat.stretch = 1; }
+  if(S.held){ S.held = false; S.carrying = false; S.mode = 'rest'; noticed(); S.cat.stretch = 1; }
 }
 addEventListener('pointerup', release);
 addEventListener('pointercancel', release);
@@ -513,5 +491,5 @@ window.CAT  = () => S;
 window.CATP = { CFG, applyColors, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
                 reset(){ Object.assign(S.cat, { x: Math.round(W*0.42), y: 648, wake: 0, puff: 0, stretch: 0, face: -1 });
                          S.fish.out = false; S.fish.left = 1; S.mode = 'rest';
-                         S.idle = 0; S.target = null; S.held = S.carrying = false; } };
+                         S.idle = 999; S.target = null; S.held = S.carrying = false; } };
 })();

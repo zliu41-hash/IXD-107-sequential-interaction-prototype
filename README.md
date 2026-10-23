@@ -14,30 +14,30 @@ One scene, filling whatever window it lands in — phone, laptop, projector. It 
 away, there is no progress bar, nothing to complete and no way to get it wrong. The sun and
 moon keep crossing whether or not anyone is watching, so the piece is as much a window as a toy.
 
-**She keeps cat hours.** Through the daylight she sleeps, and anything you do to her ends
-with her going straight back under. After dark she is up: she walks the street on her own,
-sits in the lamplight, and only settles again when the sun comes back round.
+**She sleeps unless you give her a reason not to.** The page opens with her curled up. Anything
+you do wakes her, and ten seconds after you stop she lies down and sleeps again, wherever she
+happens to be standing.
 
-Three things you can do, and the cat decides what they mean:
+| you do | she does |
+|---|---|
+| **click her** | wakes with a jolt, fur standing on end, whiskers out |
+| **click anywhere on the street** | walks there and settles on the spot |
+| **click the fish** | runs over at twice her walking speed, eats it — the fish is gone — and stays put |
+| **drag her** | goes limp in the air, then stretches once and sleeps where you let go |
+| **drag the fish** | put it anywhere you like first; she comes to wherever it lands |
+| **do nothing for ten seconds** | curls up and goes back to sleep |
 
-| | you do | she does |
-|---|---|---|
-| **Startle** | press on her | wakes with a jolt, fur standing on end, whiskers out |
-| **Carry** | drag her anywhere on the street | goes limp in the air, then stretches once and sleeps where you let go |
-| **Coax** | drag the fish out and drop it | gets up, walks over, eats it — the fish is gone — then goes back to whatever the hour asks of her |
-| **Send** | tap any spot on the street | she gets up and walks there, and settles wherever she lands |
-
-Each one leads into the next: she has to notice you before she will follow a fish, and she
-only settles once she has nothing left to do.
+Nothing has to happen in order and nothing can be got wrong. The ten seconds are in the tuning
+panel if you want her more or less patient.
 
 ## Running it
 
 Open `index.html`. Nothing to build and no dependencies — one SVG, three scripts.
 
 Press **T** (or add `#tools` to the address) for the **Street tuning** panel: light and
-colour, the pace of the day, how wet the road is, how much she bristles, how far she wanders
-after dark. *Copy settings* writes a prompt you can paste back into Claude Code to save the
-values into `js/config.js`.
+colour, the pace of the day, how wet the road is, how long she stays awake before sleeping,
+how fast she walks and runs, and how much she bristles. *Copy settings* writes a prompt you can
+paste back into Claude Code to save the values into `js/config.js`.
 
 ## Layout
 
@@ -77,3 +77,6 @@ There is not one image file in the project. Every rooftop, puddle, raindrop and 
 drawn from code on each frame, which is why the whole street can change colour across the day
 and reflow to any window. Things move even when nobody is touching it: windows go on and off
 over the evening, the lamp sways on its pole, clouds cross, she blinks and her ears twitch.
+
+Nothing glows on the cat herself. The lamps, the puddles and the rain carry all the light, and
+she stays a flat black silhouette against them at every hour.

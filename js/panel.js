@@ -14,10 +14,11 @@ const GROUPS = [
     ['sodium','The street lamp','color'], ['cat','The cat','color'] ]},
   { name:'Pace', key:'motion', items:[
     ['dayLength','A whole day lasts','range',20,240,5,'s'],
-    ['settleDelay','Left alone before it lies down','range',.2,6,.1,'s'],
+    ['sleepAfter','Left alone before she sleeps','range',2,40,1,'s'],
     ['wakeSpeed','How sharply it startles','range',1,9,.2,'×'],
     ['sleepSpeed','How slowly it sinks back','range',.2,3,.1,'×'],
-    ['walkSpeed','Walking speed','range',20,180,2,'px/s'] ]},
+    ['walkSpeed','Walking speed','range',20,180,2,'px/s'],
+    ['runSpeed','Running for the fish','range',40,320,5,'px/s'] ]},
   { name:'The wet street', key:'scene', items:[
     ['reflection','How much the road gives back','range',0,1,.02,''],
     ['rain','Drizzle in the lamp cone','range',0,2,.05,'×'],
@@ -28,7 +29,6 @@ const GROUPS = [
   { name:'The cat', key:'cat', items:[
     ['size','Size','range',.8,1.8,.05,'×'],
     ['bristle','How far the fur stands up','range',0,2,.05,'×'],
-    ['nightRoam','How restless she is after dark','range',0,3,.1,'×'],
     ['appetite','Time spent eating','range',.5,6,.1,'s'] ]}
 ];
 const fmt = (v,step) => step < 1 ? Number(v).toFixed(step < .1 ? 2 : 1) : String(Math.round(v));
