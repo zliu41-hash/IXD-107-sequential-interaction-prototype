@@ -83,5 +83,5 @@ over the evening, the lamp sways on its pole, clouds cross, she blinks and her e
 
 Nothing glows on the cat herself. The lamps, the puddles and the rain carry all the light, and
 she stays a flat black silhouette against them at every hour. She has three whiskers on each
-cheek, mirrored, the far set drawn shorter so it reads as the other side of her face; and she
-is drawn facing left, so the stage mirrors her whenever she is travelling right.
+cheek, mirrored exactly — same count, same lengths, same angles — and she is drawn facing left,
+so the stage mirrors her whenever she is travelling right.

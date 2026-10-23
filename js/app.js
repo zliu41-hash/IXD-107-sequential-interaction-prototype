@@ -317,14 +317,14 @@ function drawCat(d){
     ? `<circle cx="${hx-8}" cy="${hy-2}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${hy-2}" r="2.4" fill="${eyeCol}"/>`:''}`
     : `<path d="M${hx-13} ${hy-1} q5 4 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
 
-  // Three whiskers on each cheek, mirrored about the muzzle. The far-side set is shorter so
-  // it reads as the other side of her face rather than lines laid across her back.
+  // Three whiskers on each cheek, mirrored about the muzzle: same count, same lengths,
+  // same angles on both sides.
   const wfan = (side, len) => `
       <path d="M${(hx+side*4).toFixed(1)} ${(hy+6).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(-3-k*5).toFixed(1)} ${(side*len).toFixed(1)} ${(-7-k*9).toFixed(1)}"/>
       <path d="M${(hx+side*5).toFixed(1)} ${(hy+9).toFixed(1)} q${(side*len*.52).toFixed(1)} 1 ${(side*len*1.04).toFixed(1)} ${(1+k*1).toFixed(1)}"/>
       <path d="M${(hx+side*4).toFixed(1)} ${(hy+12).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(4+k*3).toFixed(1)} ${(side*len).toFixed(1)} ${(9+k*7).toFixed(1)}"/>`;
   const whiskers = `<g fill="none" stroke="#cfdcd7" stroke-width="1.4" stroke-linecap="round"
-      opacity="${(.5+k*.4).toFixed(2)}">${wfan(-1, 30+k*10)}${wfan(1, 15+k*5)}</g>`;
+      opacity="${(.5+k*.4).toFixed(2)}">${wfan(-1, 30+k*10)}${wfan(1, 30+k*10)}</g>`;
 
   $('catArt').innerHTML = `${body}
     <circle cx="${hx}" cy="${hy}" r="${hr}" fill="var(--cat)"/>
