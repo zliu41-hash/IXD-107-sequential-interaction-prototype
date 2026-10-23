@@ -61,6 +61,13 @@ function bristle(x,y,k){
   return s;
 }
 
+function whisk(hx,hy){
+  const f = d => `<path d="M${hx+d*4} ${hy+6} q${d*8} -2 ${d*16} -5"/>
+                  <path d="M${hx+d*5} ${hy+9} q${d*8} 1 ${d*17} 1"/>
+                  <path d="M${hx+d*4} ${hy+12} q${d*8} 4 ${d*16} 8"/>`;
+  return `<g fill="none" stroke="var(--paper)" stroke-width="1.2" stroke-linecap="round" opacity=".85">${f(-1)}${f(1)}</g>`;
+}
+
 function draw(){
   const k=S.puff;
   const breathe = Math.sin(S.t*(k>.4?3.4:1.1)) * (k>.4?1.4:2.8);
@@ -84,10 +91,7 @@ function draw(){
   <path d="M${x-7} ${y-23} l${(6-ears).toFixed(1)} ${(-14+ears*2.1).toFixed(1)} l9 10 Z" fill="var(--ink)" stroke="var(--paper)" stroke-width="1.6" stroke-linejoin="round"/>
   ${eye}
   <path d="M${x-17} ${y-3} l-3 3 l3 2 l3 -2 Z" fill="var(--paper)"/>
-  <g stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round" opacity="${(0.35+k*0.65).toFixed(2)}">
-    <path d="M${x-26} ${y-2} l${(-16-k*8).toFixed(1)} ${(2-k*7).toFixed(1)}"/>
-    <path d="M${x-26} ${y+2} l${(-17-k*8).toFixed(1)} ${(5+k*4).toFixed(1)}"/>
-  </g>`;
+  ${whisk(x-17, y-3)}`;
 
   // sleep marks only while settled
   if(k<.12){

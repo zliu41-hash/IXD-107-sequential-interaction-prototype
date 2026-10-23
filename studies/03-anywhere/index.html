@@ -54,6 +54,13 @@ const pt=e=>{const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.m
 // phases: 0 asleep · 1 held · 2 landing stretch · 3 curling back down
 const S={ t:0, x:170, y:600, held:false, wake:0, stretch:0, grabDX:0, grabDY:0 };
 
+function whisk(hx,hy){
+  const f = d => `<path d="M${hx+d*4} ${hy+6} q${d*8} -2 ${d*16} -5"/>
+                  <path d="M${hx+d*5} ${hy+9} q${d*8} 1 ${d*17} 1"/>
+                  <path d="M${hx+d*4} ${hy+12} q${d*8} 4 ${d*16} 8"/>`;
+  return `<g fill="none" stroke="var(--paper)" stroke-width="1.2" stroke-linecap="round" opacity=".85">${f(-1)}${f(1)}</g>`;
+}
+
 function body(x,y,wake,stretch){
   // wake 0..1 lifts the head and opens the eye; stretch is the little arch after landing
   const b=Math.sin(S.t*(wake>.5?2.6:1.1))*2.6*(1-wake*.4);
@@ -75,7 +82,7 @@ function body(x,y,wake,stretch){
   <path d="M${x-32} ${(y-20-wake*6).toFixed(1)} l${(-3+ears).toFixed(1)} ${(-15+ears*2).toFixed(1)} l15 6 Z" fill="var(--ink)"/>
   <path d="M${x-7} ${(y-23-wake*6).toFixed(1)} l${(6-ears).toFixed(1)} ${(-14+ears*2).toFixed(1)} l9 10 Z" fill="var(--ink)"/>
   <g transform="translate(0 ${(-wake*6).toFixed(1)})">${eye}
-  <path d="M${x-17} ${y-3} l-3 3 l3 2 l3 -2 Z" fill="var(--paper)"/></g></g>`;
+  <path d="M${x-17} ${y-3} l-3 3 l3 2 l3 -2 Z" fill="var(--paper)"/>${whisk(x-17,y-3)}</g></g>`;
 }
 
 function draw(){
