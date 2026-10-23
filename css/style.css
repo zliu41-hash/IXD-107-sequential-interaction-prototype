@@ -1,70 +1,49 @@
 /* Cat Naps — Night Shift.
-   The whole piece is one SVG stage. No screens, no steps, nothing to flip between. */
+   The street fills the window: one SVG, no frame, no scrollbars, nothing to flip between. */
 :root{
-  --page:    #07111a;
   --sodium:  #ffa23f;
   --cat:     #050c10;
-  --kerb:    #89a39c;
   --paper:   #eef4f1;
   --display: "Fraunces", Georgia, "Times New Roman", serif;
   color-scheme: dark;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
-body{
-  background:
-    radial-gradient(120% 80% at 50% 0%, #11212c 0%, var(--page) 60%, #04090e 100%);
-  color:var(--paper);
-  display:flex; align-items:center; justify-content:center; overflow:hidden;
-  padding-left:max(14px, env(safe-area-inset-left,0px));
-  padding-right:max(14px, env(safe-area-inset-right,0px));
+html,body{height:100%;margin:0;overflow:hidden;background:#05090e}
+body{ color:var(--paper); }
+svg#stage{
+  display:block; position:fixed; inset:0;
+  width:100vw; height:100vh; height:100dvh;
+  touch-action:none; user-select:none; -webkit-user-select:none; cursor:default;
 }
-.scene-wrap{
-  position:relative;
-  height:min(844px, calc(100% - 20px)); aspect-ratio:390/844; max-width:100%;
-  border-radius:30px; overflow:hidden;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,.07),
-    0 0 90px -20px rgba(255,162,63,.22),
-    0 40px 80px -36px rgba(0,0,0,.9);
-}
-svg#stage{ display:block; width:100%; height:100%; touch-action:none;
-  user-select:none; -webkit-user-select:none; cursor:default; }
 #catArt{ cursor:grab } #fish, #tray{ cursor:grab }
 
 .display{
-  font-family:var(--display); font-weight:300; font-size:50px;
+  font-family:var(--display); font-weight:300;
   font-variation-settings:"SOFT" 60, "WONK" 1, "opsz" 120;
   fill:var(--paper); letter-spacing:-.018em;
 }
 .hint{
-  font-family:var(--display); font-weight:300; font-style:italic; font-size:15px;
-  fill:var(--paper); opacity:.62; letter-spacing:.01em;
+  font-family:var(--display); font-weight:300; font-style:italic;
+  fill:var(--paper); opacity:.6; letter-spacing:.01em;
 }
-#titleG{ transition:opacity 1.1s ease 0.15s }
+#titleG{ transition:opacity 1.2s ease .2s }
 #titleG.gone{ opacity:0 }
-
-@media (max-width:430px){
-  body{padding:0}
-  .scene-wrap{height:100%;border-radius:0;box-shadow:none}
-}
-@media (prefers-reduced-motion: reduce){
-  #titleG{transition:none}
-}
+@media (prefers-reduced-motion: reduce){ #titleG{transition:none} }
 
 /* ---------- tool panel ---------- */
 .panel{
   position:fixed; z-index:20;
-  top:max(14px, env(safe-area-inset-top,0px)); left:max(14px, env(safe-area-inset-left,0px));
-  width:304px; max-width:calc(100vw - 28px); max-height:calc(100vh - 28px); overflow:auto;
-  background:#0f1a22; color:#e8eeeb; border:1px solid #273a45; border-radius:14px;
-  box-shadow:0 18px 50px -16px rgba(0,0,0,.85);
+  top:max(16px, env(safe-area-inset-top,0px)); left:max(16px, env(safe-area-inset-left,0px));
+  width:308px; max-width:calc(100vw - 32px); max-height:calc(100vh - 32px); overflow:auto;
+  background:rgba(13,22,29,.94); backdrop-filter:blur(14px);
+  color:#e8eeeb; border:1px solid #273a45; border-radius:14px;
+  box-shadow:0 18px 50px -16px rgba(0,0,0,.9);
   font:12px/1.45 ui-monospace, Menlo, Consolas, monospace;
 }
 .panel[hidden]{display:none}
 .panel header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;
-  border-bottom:1px solid #22333d;position:sticky;top:0;background:#0f1a22}
-.panel header strong{font-family:var(--display);font-weight:500;font-size:15px;letter-spacing:0}
+  border-bottom:1px solid #22333d;position:sticky;top:0;background:rgba(13,22,29,.97)}
+.panel header strong{font-family:var(--display);font-weight:500;font-size:15px}
 .panel header button{border:0;background:none;color:#9fb3ad;font:inherit;cursor:pointer;padding:4px 6px}
 .panel details{border-bottom:1px solid #1b2a33}
 .panel summary{padding:10px 14px;cursor:pointer;color:var(--sodium)}

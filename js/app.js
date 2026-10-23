@@ -1,10 +1,9 @@
 /* Cat Naps — Night Shift
-   One wet street, one lamp, one cat. A single scene that never cuts away.
-   There are no steps, no score and no ending; the cat always goes back to sleep.
-     touch her        -> she startles awake and her fur stands up
-     carry her        -> let go anywhere and she stretches once, then sleeps there
-     put a fish down  -> she gets up, walks over, eats, and sleeps where she ate
-   The sun and moon keep going whether or not anyone is watching. */
+   One wet street filling the screen. She sleeps through the daylight and is up all night.
+     touch her        -> she startles awake and her fur stands on end
+     carry her        -> let go anywhere and she stretches once, then settles there
+     put a fish down  -> she walks over, eats, and goes back to what the hour asks of her
+   Nothing completes, nothing fails, and the sun and moon keep going on their own. */
 (() => {
 'use strict';
 
@@ -14,132 +13,219 @@ const svg = $('stage');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const lerp  = (a,b,k) => a + (b-a)*k;
+const rnd   = (a,b) => a + Math.random()*(b-a);
 const toSvg = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
                      return p.matrixTransform(svg.getScreenCTM().inverse()); };
 
-const hex = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
-const rgb = a => `rgb(${a.map(v=>Math.round(clamp(v,0,255))).join(',')})`;
+const hex  = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+const rgb  = a => `rgb(${a.map(v=>Math.round(clamp(v,0,255))).join(',')})`;
 const mixA = (a,b,k) => { const A=hex(a), B=hex(b); return [lerp(A[0],B[0],k), lerp(A[1],B[1],k), lerp(A[2],B[2],k)]; };
 const mix  = (a,b,k) => rgb(mixA(a,b,k));
-const burn = (base, warm, k) => { const W = hex(warm); return rgb(base.map((v,i)=>lerp(v, W[i], k))); };
+const burn = (base, warm, k) => { const Wc = hex(warm); return rgb(base.map((v,i)=>lerp(v, Wc[i], k))); };
+const blend = (A,B,k) => A.map((v,i)=>lerp(v, B[i], k));
+const PAL = { road: [20,34,42], sky: [11,26,36] };
 
-// ---- the stage -------------------------------------------------------------
-const KERB = 470;                            // where the pavement starts
-const PEN  = { x0: 46, x1: 344, y0: 520, y1: 756 };
-const TRAY = { x: 324, y: 788 };
-const LAMP = { post: 322, head: 288, top: 292, base: 476 };
+// ---- the world, sized to whatever window it lands in -----------------------
+const KERB = 470, FLOOR = 844;
+let W = 390;                                   // design width; height is always 844
+let LAMP = { post: 300, head: 266, top: 292, base: 476 };
+let PEN  = { x0: 50, x1: 340, y0: 520, y1: 772 };
+let TRAY = { x: 324, y: 788 };
+let STARS = [], FAR = [], NEAR = [], RAIN = [], PUDDLE = [], CLOUD = [];
+const SPLASH = [];
 
+function buildWorld(){
+  LAMP = { post: Math.round(W*0.78), head: Math.round(W*0.78) - 34, top: 292, base: 476 };
+  PEN  = { x0: 54, x1: W - 54, y0: 520, y1: 778 };
+  TRAY = { x: W - 72, y: 788 };
+
+  STARS = [];
+  for(let i=0;i<Math.round(W/11);i++) STARS.push({ x: rnd(6,W-6), y: rnd(26,430), r: rnd(.6,1.7), p: rnd(0,7) });
+
+  // two rows of rooftops: the far one hazy, the near one a hard silhouette
+  FAR = []; let x = -40;
+  while(x < W + 40){ const w = rnd(46,104), h = rnd(96,208); FAR.push([x, KERB-26-h, w, h]); x += w + rnd(2,16); }
+  NEAR = []; x = -30;
+  while(x < W + 30){ const w = rnd(54,120), h = rnd(70,186); NEAR.push([x, KERB-h, w, h]); x += w + rnd(1,10); }
+
+  RAIN = [];
+  for(let i=0;i<Math.round(W/7);i++) RAIN.push({ x: rnd(0,W), y: rnd(0,FLOOR), v: rnd(340,620), l: rnd(10,26) });
+
+  PUDDLE = [];
+  for(let i=0;i<Math.round(W/150)+4;i++){
+    const py = rnd(KERB+40, FLOOR-20);
+    PUDDLE.push({ x: rnd(20,W-20), y: py, rx: rnd(26,78), ry: rnd(4,11) });
+  }
+
+  CLOUD = [];
+  for(let i=0;i<5;i++) CLOUD.push({ x: rnd(-200,W), y: rnd(60,330), w: rnd(180,420), h: rnd(34,78), v: rnd(3,9), o: rnd(.25,.6) });
+}
+
+function layout(){
+  const r = (innerWidth || 390) / (innerHeight || 844);
+  W = clamp(Math.round(844 * r), 360, 2400);
+  svg.setAttribute('viewBox', `0 0 ${W} ${FLOOR}`);
+  $('roadClipRect').setAttribute('width', W);
+  buildWorld();
+  S.cat.x = clamp(S.cat.x, PEN.x0, PEN.x1);
+  S.fish.x = clamp(S.fish.x, 30, W-30);
+  cache.key = {};                                // force every cached layer to redraw
+}
+
+// ---- state -----------------------------------------------------------------
 const S = {
-  t: 0, day: 0.62,                           // 0 dawn · .25 noon · .5 dusk · .75 midnight
-  cat: { x: 236, y: 640, wake: 0, puff: 0, stretch: 0, face: -1, bob: 0 },
+  t: 0, day: 0.60,                               // 0 dawn · .25 noon · .5 dusk · .75 midnight
+  cat: { x: 200, y: 648, wake: 0, puff: 0, stretch: 0, face: -1, bob: 0 },
   held: false, carrying: false, grabDX: 0, grabDY: 0, moved: 0,
-  fish: { out: false, held: false, x: TRAY.x, y: TRAY.y, left: 1 },
-  mode: 'rest', target: null, eat: 0, idle: 0, roamIn: 9, touched: false, flick: 1
+  fish: { out: false, held: false, x: 324, y: 788, left: 1 },
+  mode: 'rest', target: null, eat: 0, idle: 0, roamIn: 5, pause: 0,
+  drowsy: 1, touched: false, flick: 1
 };
+const cache = { key: {}, html: {} };
+const once = (slot, key, make) => { if(cache.key[slot] !== key){ cache.key[slot] = key; $(slot).innerHTML = make(); } };
 
 const daylight = () => clamp(Math.sin(S.day * Math.PI * 2) * 2.1 + 0.08, 0, 1);
 const duskAmt  = () => { const d = daylight(); return clamp(1 - Math.abs(d - 0.40) / 0.40, 0, 1); };
 
-const STAR = Array.from({length: 30}, (_, i) => ({
-  x: 14 + ((i * 97) % 362), y: 40 + ((i * 53) % 350), r: .7 + ((i * 7) % 10) / 10 }));
-const SKYLINE = [[-14,350,86,120],[66,304,52,166],[112,366,44,104],[152,286,70,184],
-                 [214,352,46,118],[254,312,60,158],[308,356,54,114],[356,298,52,172]];
-const RAIN = Array.from({length: 46}, (_, i) => ({
-  x: 150 + Math.random()*300, y: Math.random()*560, v: 320 + Math.random()*260, l: 9 + Math.random()*16 }));
-
-// ---- backdrop --------------------------------------------------------------
+// ---- sky -------------------------------------------------------------------
 function drawSky(d, dusk){
-  const C = CFG.colors;
-  const top = mixA(C.skyNight, C.skyDay, d*0.62);
+  const C = CFG.colors, night = 1 - d;
+
+  const top = mixA(C.skyNight, C.skyDay, d*0.58);
   const mid = mixA(C.skyNight, C.skyDay, d);
-  const low = mixA(C.skyNight, C.skyDay, Math.min(1, d*1.3));
+  const low = mixA(C.skyNight, C.skyDay, Math.min(1, d*1.32));
   $('skyTop').setAttribute('stop-color', burn(top, C.dusk, dusk*0.07));
   $('skyMid').setAttribute('stop-color', burn(mid, C.dusk, dusk*0.40));
-  $('skyLow').setAttribute('stop-color', burn(low, C.dusk, dusk*0.80));
+  $('skyLow').setAttribute('stop-color', burn(low, C.dusk, dusk*0.82));
+  PAL.sky  = mixA(C.skyNight, C.skyDay, d);
+  PAL.road = hex(burn(mixA(C.roadNight, C.roadDay, d), C.dusk, dusk*0.22).replace(/rgb\((\d+),(\d+),(\d+)\)/, (m,r,g,b)=>'#'+[r,g,b].map(v=>(+v).toString(16).padStart(2,'0')).join('')));
+  $('roadTop').setAttribute('stop-color', rgb(PAL.road.map(v=>v*0.82)));
+  $('roadBot').setAttribute('stop-color', rgb(PAL.road));
 
-  const rd = mixA(C.roadNight, C.roadDay, d);
-  $('roadTop').setAttribute('stop-color', burn(rd, C.dusk, dusk*0.30));
-  $('roadBot').setAttribute('stop-color', rgb(mixA(C.roadNight, C.roadDay, d*0.55)));
+  // the band of haze that pushes the far rooftops back
+  const hz = burn(mixA(C.skyNight, C.skyDay, Math.min(1, d*1.2)), C.dusk, dusk*.6);
+  $('hazeA').setAttribute('stop-color', hz); $('hazeA').setAttribute('stop-opacity', 0);
+  $('hazeB').setAttribute('stop-color', hz); $('hazeB').setAttribute('stop-opacity', (0.78*CFG.scene.depth).toFixed(2));
 
-  const night = 1 - d;
-  $('stars').innerHTML = night < .22 ? '' : STAR.map((s,i) =>
-    `<circle cx="${s.x}" cy="${s.y}" r="${(s.r*(.65+Math.sin(S.t*1.7+i)*.35)).toFixed(2)}"
-       fill="#fff" opacity="${(((night-.22)/.78)*.85).toFixed(2)}"/>`).join('');
+  once('stars', `${W}|${Math.round(night*18)}`, () => night < .2 ? '' : STARS.map(s =>
+    `<circle cx="${s.x.toFixed(0)}" cy="${s.y.toFixed(0)}" r="${s.r.toFixed(1)}" fill="#fff"
+       opacity="${(((night-.2)/.8)*.85).toFixed(2)}"/>`).join(''));
 
-  // one arc, the sun leading and the moon following
+  // one arc: the sun leads, the moon follows
   const u = S.day % 1, up = u < .5 ? u*2 : (u-.5)*2, isSun = u < .5;
-  const cx = 42 + 306*up, cy = 304 - Math.sin(up*Math.PI)*176;
+  const cx = W*0.07 + W*0.86*up, cy = 320 - Math.sin(up*Math.PI)*196;
   $('celestial').innerHTML = isSun
-    ? `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="112" fill="url(#halo)" opacity="${(0.14+dusk*0.62).toFixed(2)}"/>
-       <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="27"
-         fill="${burn(hex('#fff6e2'), CFG.colors.dusk, dusk*0.85)}"/>`
-    : `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="64" fill="#dce9f2" opacity="${(night*.07).toFixed(2)}" filter="url(#soft)"/>
-       <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="25" fill="#e9f1f6"/>
-       <circle cx="${(cx+11).toFixed(1)}" cy="${(cy-7).toFixed(1)}" r="21"
+    ? `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(120+dusk*60).toFixed(0)}" fill="url(#halo)" opacity="${(0.16+dusk*0.6).toFixed(2)}"/>
+       <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="30" fill="${burn(hex('#fff7e6'), CFG.colors.dusk, dusk*0.85)}"/>`
+    : `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="86" fill="#dce9f2" opacity="${(night*.05).toFixed(2)}" filter="url(#cloudy)"/>
+       <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="27" fill="#eef3f7"/>
+       <circle cx="${(cx+12).toFixed(1)}" cy="${(cy-8).toFixed(1)}" r="23"
          fill="${burn(mixA(CFG.colors.skyNight, CFG.colors.skyDay, d), CFG.colors.dusk, dusk*0.5)}"/>`;
 
-  $('skyline').innerHTML = SKYLINE.map(b => {
+  $('clouds').innerHTML = CFG.scene.cloud <= 0 ? '' : CLOUD.map(c =>
+    `<ellipse cx="${c.x.toFixed(0)}" cy="${c.y.toFixed(0)}" rx="${c.w/2}" ry="${c.h/2}" filter="url(#cloudy)"
+       fill="${burn(mixA('#1b2a36','#f2f6f4', d), CFG.colors.dusk, dusk*.55)}"
+       opacity="${(c.o*CFG.scene.cloud*(0.3+d*0.5)).toFixed(2)}"/>`).join('');
+
+  const farCol  = burn(mixA('#16252f','#9db3ae', d*.5), CFG.colors.dusk, dusk*.34);
+  const nearCol = burn(mixA('#030b11','#4a615d', d*.6),  CFG.colors.dusk, dusk*.22);
+  const sig = `${W}|${Math.round(d*26)}|${Math.round(dusk*16)}`;
+  once('skylineFar',  sig, () => FAR.map(b => `<rect x="${b[0].toFixed(0)}" y="${b[1].toFixed(0)}" width="${b[2].toFixed(0)}" height="${b[3].toFixed(0)}" fill="${farCol}"/>`).join(''));
+  once('skylineNear', sig, () => NEAR.map(b => {
     let w = '';
-    for(let r=0;r<Math.floor(b[3]/34);r++) for(let q=0;q<Math.floor(b[2]/26);q++){
-      const lit = ((r*7 + q*13 + b[0]) % 5) < 2;
-      w += `<rect x="${b[0]+8+q*26}" y="${b[1]+14+r*34}" width="9" height="12"
-             fill="${CFG.colors.sodium}" opacity="${(lit ? night*.8 : night*.1).toFixed(2)}"/>`;
+    for(let r=0;r<Math.floor(b[3]/36);r++) for(let q=0;q<Math.floor(b[2]/28);q++){
+      const lit = ((r*7 + q*13 + Math.round(b[0])) % 5) < 2;
+      w += `<rect x="${(b[0]+9+q*28).toFixed(0)}" y="${(b[1]+16+r*36).toFixed(0)}" width="9" height="13"
+             fill="${CFG.colors.sodium}" opacity="${(lit ? (1-d)*.82 : (1-d)*.08).toFixed(2)}"/>`;
     }
-    return `<rect x="${b[0]}" y="${b[1]}" width="${b[2]}" height="${b[3]}"
-             fill="${burn(mixA('#04101a', '#5e7873', d*.62), CFG.colors.dusk, dusk*.26)}"/>${w}`;
-  }).join('');
+    return `<rect x="${b[0].toFixed(0)}" y="${b[1].toFixed(0)}" width="${b[2].toFixed(0)}" height="${b[3].toFixed(0)}" fill="${nearCol}"/>
+      <rect x="${b[0].toFixed(0)}" y="${b[1].toFixed(0)}" width="${b[2].toFixed(0)}" height="3"
+        fill="${burn(mixA('#2c3c42','#e6efec', d), CFG.colors.dusk, dusk*.7)}" opacity="${(.2+d*.5).toFixed(2)}"/>${w}`;
+  }).join(''));
 }
 
+// ---- street ----------------------------------------------------------------
 function drawStreet(d, dusk){
-  const night = 1 - d, lamp = clamp(night*1.5, 0, 1) * S.flick;
-  const C = CFG.colors;
+  const night = 1 - d, lamp = clamp(night*1.55, 0, 1) * S.flick, C = CFG.colors;
 
-  // kerb line and a few slab joints — quiet, just enough to read as paving
-  let k = `<rect x="0" y="${KERB}" width="390" height="46" fill="#000" opacity="${(.10+d*.12).toFixed(2)}" filter="url(#soft)"/>
-    <line x1="0" y1="${KERB}" x2="390" y2="${KERB}" stroke="${mix(C.roadDay, '#ffffff', .4)}"
-      stroke-width="2" opacity="${(.22+d*.4).toFixed(2)}"/>`;
-  for(let y = KERB+92; y < 844; y += 92)
-    k += `<line x1="0" y1="${y}" x2="390" y2="${y}" stroke="#fff" stroke-width="1" opacity="${(.05+d*.07).toFixed(2)}"/>`;
-  for(let x = 58; x < 390; x += 104)
-    k += `<line x1="${x}" y1="${KERB}" x2="${x}" y2="844" stroke="#fff" stroke-width="1" opacity="${(.04+d*.06).toFixed(2)}"/>`;
-  $('kerb').innerHTML = k;
+  once('paving', `${W}|${Math.round(d*18)}`, () => {
+    let k = `<rect x="0" y="${KERB}" width="${W}" height="54" fill="#000" opacity="${(.12+d*.12).toFixed(2)}" filter="url(#soft)"/>
+      <rect x="0" y="${KERB}" width="${W}" height="9" fill="${mix(C.roadDay,'#ffffff',.3)}" opacity="${(.14+d*.3).toFixed(2)}"/>
+      <line x1="0" y1="${KERB}" x2="${W}" y2="${KERB}" stroke="${mix(C.roadDay,'#ffffff',.55)}" stroke-width="2" opacity="${(.3+d*.45).toFixed(2)}"/>
+      <line x1="0" y1="${KERB+9}" x2="${W}" y2="${KERB+9}" stroke="#000" stroke-width="2" opacity="${(.3+(1-d)*.25).toFixed(2)}"/>`;
+    for(let y = KERB+96; y < FLOOR; y += 96)
+      k += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#fff" stroke-width="1" opacity="${(.05+d*.07).toFixed(2)}"/>`;
+    for(let x = 56; x < W; x += 108)
+      k += `<line x1="${x}" y1="${KERB}" x2="${x}" y2="${FLOOR}" stroke="#fff" stroke-width="1" opacity="${(.04+d*.06).toFixed(2)}"/>`;
+    return k;
+  });
 
-  // the pool of lamplight on the wet road, and the lamp's own smear running toward us
-  const wob = Math.sin(S.t*1.3)*5;
+  once('puddles', `${W}|${Math.round(d*18)}|${Math.round(lamp*12)}|${Math.round(CFG.scene.reflection*20)}`, () =>
+    PUDDLE.map(p => {
+      const near = clamp(1 - Math.abs(p.x - LAMP.head)/360, 0, 1) * lamp;
+      return `<ellipse cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" rx="${p.rx}" ry="${p.ry}"
+        fill="${rgb(blend(PAL.road, PAL.sky, .62))}"
+        opacity="${(.5 + CFG.scene.reflection*.4).toFixed(2)}" filter="url(#wet)"/>
+      <ellipse cx="${(p.x + p.rx*.2).toFixed(0)}" cy="${p.y.toFixed(0)}" rx="${(p.rx*.5).toFixed(0)}" ry="${(p.ry*.5).toFixed(1)}"
+        fill="${C.sodium}" opacity="${(near*.42).toFixed(2)}" filter="url(#wet)"/>`;
+    }).join(''));
+
+  // a faint sheen along the near edge, so the foreground is wet rather than empty
+  once('sheen', `${W}|${Math.round(d*18)}|${Math.round(lamp*10)}`, () =>
+    `<rect x="0" y="${FLOOR-230}" width="${W}" height="230"
+       fill="${rgb(blend(PAL.road, PAL.sky, .5))}" opacity="${(.28+d*.16).toFixed(2)}" filter="url(#soft)"/>`);
+
+  const wob = Math.sin(S.t*1.2)*6;
   $('wetwork').innerHTML = `
-    <ellipse cx="${LAMP.head}" cy="672" rx="196" ry="150" fill="url(#pool)" opacity="${lamp.toFixed(2)}"/>
+    <ellipse cx="${LAMP.head}" cy="690" rx="${Math.min(W*0.62, 230)}" ry="162" fill="url(#pool)" opacity="${lamp.toFixed(2)}"/>
     <path d="M${LAMP.head-9} ${LAMP.base} L${LAMP.head+9} ${LAMP.base}
-             L${(LAMP.head+62+wob).toFixed(1)} 844 L${(LAMP.head-62+wob).toFixed(1)} 844 Z"
-          fill="url(#lampSmear)" opacity="${(lamp*.55).toFixed(2)}" filter="url(#soft)"/>`;
+             L${(LAMP.head+70+wob).toFixed(1)} ${FLOOR} L${(LAMP.head-70+wob).toFixed(1)} ${FLOOR} Z"
+          fill="url(#lampSmear)" opacity="${(lamp*.5).toFixed(2)}" filter="url(#soft)"/>`;
 
-  // the cone of light, and drizzle falling only inside it
-  const spread = 166;
+  const spread = 190;
   $('coneShape').setAttribute('d',
-    `M${LAMP.head-15} ${LAMP.top+8} L${LAMP.head+15} ${LAMP.top+8} L${LAMP.head+spread} 844 L${LAMP.head-spread} 844 Z`);
+    `M${LAMP.head-16} ${LAMP.top+8} L${LAMP.head+16} ${LAMP.top+8} L${LAMP.head+spread} ${FLOOR} L${LAMP.head-spread} ${FLOOR} Z`);
   $('coneG').innerHTML = lamp < .04 ? '' :
-    `<path d="M${LAMP.head-15} ${LAMP.top+8} L${LAMP.head+15} ${LAMP.top+8} L${LAMP.head+spread} 844 L${LAMP.head-spread} 844 Z"
-       fill="url(#cone)" opacity="${(lamp*.62).toFixed(2)}" filter="url(#soft)"/>`;
+    `<path d="M${LAMP.head-16} ${LAMP.top+8} L${LAMP.head+16} ${LAMP.top+8} L${LAMP.head+spread} ${FLOOR} L${LAMP.head-spread} ${FLOOR} Z"
+       fill="url(#cone)" opacity="${(lamp*.68).toFixed(2)}" filter="url(#soft)"/>`;
 
-  if(CFG.scene.rain > 0 && lamp > .3){
+  if(CFG.scene.rain > 0 && lamp > .25){
+    $('rainAll').innerHTML = RAIN.map(r =>
+      `<line x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x-4).toFixed(1)}" y2="${(r.y+r.l).toFixed(1)}"
+         stroke="#cfe0e4" stroke-width="1" opacity="${(.09*lamp*CFG.scene.rain).toFixed(2)}"/>`).join('');
     $('rain').innerHTML = RAIN.map(r =>
-      `<line x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x-3).toFixed(1)}" y2="${(r.y+r.l).toFixed(1)}"
-         stroke="${C.sodium}" stroke-width="1.1" opacity="${(.34*lamp*CFG.scene.rain).toFixed(2)}"/>`).join('');
-  } else $('rain').innerHTML = '';
+      `<line x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x-4).toFixed(1)}" y2="${(r.y+r.l).toFixed(1)}"
+         stroke="${C.sodium}" stroke-width="1.2" opacity="${(.32*lamp*CFG.scene.rain).toFixed(2)}"/>`).join('');
+    $('splash').innerHTML = SPLASH.map(s =>
+      `<ellipse cx="${s.x.toFixed(0)}" cy="${s.y.toFixed(0)}" rx="${(2+s.a*10).toFixed(1)}" ry="${(0.6+s.a*3).toFixed(1)}"
+         fill="none" stroke="${C.sodium}" stroke-width="1" opacity="${((1-s.a)*.45*lamp).toFixed(2)}"/>`).join('');
+  } else { $('rain').innerHTML = ''; $('rainAll').innerHTML = ''; $('splash').innerHTML = ''; }
 
-  // lamp post, bin — kept spare so the light is the thing you look at
-  const metal = burn(mixA('#081118', '#4a615d', d*.7), C.dusk, dusk*.26);
+  const metal = burn(mixA('#070f16','#445b57', d*.72), C.dusk, dusk*.24);
   $('props').innerHTML = `
-    <g fill="none" stroke="${metal}" stroke-width="4" stroke-linecap="round">
+    <g fill="none" stroke="${metal}" stroke-width="4.4" stroke-linecap="round">
       <path d="M${LAMP.post} ${LAMP.base} V${LAMP.top+2}"/>
-      <path d="M${LAMP.post} ${LAMP.top+4} q0 -14 -16 -14 h-18"/>
+      <path d="M${LAMP.post} ${LAMP.top+4} q0 -15 -17 -15 h-17"/>
     </g>
-    <circle cx="${LAMP.head}" cy="${LAMP.top+4}" r="92" fill="url(#halo)" opacity="${(lamp*.95).toFixed(2)}"/>
-    <path d="M${LAMP.head-14} ${LAMP.top-4} h28 l-6 18 h-16 Z"
-          fill="${lamp > .25 ? C.sodium : metal}" opacity="${(0.45+lamp*.55).toFixed(2)}"/>
-    <g fill="none" stroke="${metal}" stroke-width="3.4" stroke-linejoin="round">
-      <rect x="24" y="388" width="50" height="82" rx="6" fill="${burn(mixA('#030b11','#4e6763',d*.55), C.dusk, dusk*.18)}"/>
-      <path d="M32 388 v-13 h34 v13"/>
-      <path d="M38 406 v48 M50 406 v48 M62 406 v48" stroke-width="2" opacity=".5"/>
+    <circle cx="${LAMP.head}" cy="${LAMP.top+4}" r="104" fill="url(#halo)" opacity="${(lamp*.95).toFixed(2)}"/>
+    <path d="M${LAMP.head-15} ${LAMP.top-5} h30 l-6 19 h-18 Z"
+          fill="${lamp > .22 ? C.sodium : metal}" opacity="${(0.45+lamp*.55).toFixed(2)}"/>
+    <g fill="${burn(mixA('#030a10','#3f5551', d*.6), C.dusk, dusk*.16)}" stroke="${metal}" stroke-width="3.4" stroke-linejoin="round">
+      <rect x="${Math.round(W*0.05)}" y="384" width="54" height="86" rx="6"/>
+      <path d="M${Math.round(W*0.05)+8} 384 v-14 h38 v14" fill="none"/>
+      <path d="M${Math.round(W*0.05)+13} 404 v50 M${Math.round(W*0.05)+27} 404 v50 M${Math.round(W*0.05)+41} 404 v50" stroke-width="2" opacity=".45"/>
+    </g>
+    <g opacity="${(0.6+lamp*0.4).toFixed(2)}">
+      <g fill="none" stroke="${metal}" stroke-width="3.4" stroke-linecap="round">
+        <path d="M${Math.round(W*0.19)} 474 V318"/><path d="M${Math.round(W*0.19)} 320 q0 -12 -13 -12 h-13"/>
+      </g>
+      <circle cx="${Math.round(W*0.19)-26}" cy="322" r="70" fill="url(#halo)" opacity="${(lamp*.72).toFixed(2)}"/>
+      <path d="M${Math.round(W*0.19)-37} 314 h22 l-5 15 h-12 Z" fill="${lamp > .22 ? C.sodium : metal}" opacity="${(0.45+lamp*.55).toFixed(2)}"/>
+      <ellipse cx="${Math.round(W*0.19)-26}" cy="620" rx="128" ry="104" fill="url(#pool)" opacity="${(lamp*.5).toFixed(2)}"/>
+    </g>
+    <g stroke="${metal}" stroke-width="3" fill="none" opacity=".9">
+      <path d="M${Math.round(W*0.30)} 470 v-56 M${Math.round(W*0.30)+22} 470 v-56 M${Math.round(W*0.30)+44} 470 v-56"/>
+      <path d="M${Math.round(W*0.30)-8} 416 h60"/>
     </g>`;
 }
 
@@ -150,7 +236,7 @@ function bristles(x, y, k){
   for(let i=0;i<32;i++){
     const a  = Math.PI*(1.16 + i/31*0.92);
     const px = x + Math.cos(a)*54, py = y - 6 + Math.sin(a)*30;
-    const len = ((7 + Math.sin(i*1.9)*4.5)*k + Math.sin(i*2.7 + S.t*18)*2.2*k) * CFG.scene.lampFlicker * CFG.cat.bristle;
+    const len = ((7 + Math.sin(i*1.9)*4.5)*k + Math.sin(i*2.7 + S.t*18)*2.2*k) * CFG.cat.bristle;
     s += `<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}"
             x2="${(px+Math.cos(a)*len).toFixed(1)}" y2="${(py-6+Math.sin(a)*len).toFixed(1)}"
             stroke="var(--cat)" stroke-width="2.6" stroke-linecap="round"/>`;
@@ -159,11 +245,12 @@ function bristles(x, y, k){
 }
 
 function drawCat(d){
-  const c = S.cat, k = c.puff, w = c.wake, sz = CFG.cat.size;
+  const c = S.cat, k = c.puff, w = c.wake;
+  const sz = CFG.cat.size * clamp(1 + (W/390 - 1)*0.17, 1, 1.75);
   const night = 1 - d;
-  // the lamp only reaches so far: the further she wanders, the less of it lands on her
-  const reach = clamp(1 - Math.hypot(c.x - LAMP.head, (c.y - 660)*0.6) / 250, 0.06, 1);
+  const reach = clamp(1 - Math.hypot(c.x - LAMP.head, (c.y - 680)*0.6) / 280, 0.05, 1);
   const rim = clamp(night*1.4, 0, 1) * S.flick * reach;
+
   const tf = `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) scale(${(c.face*sz).toFixed(3)} ${sz}) translate(${(-c.x).toFixed(1)} ${(-c.y).toFixed(1)})`;
   $('catArt').setAttribute('transform', tf);
   $('zzz').setAttribute('transform', tf);
@@ -171,15 +258,18 @@ function drawCat(d){
 
   const x = c.x, arch = Math.sin(c.stretch*Math.PI)*11;
   const y = c.y + c.bob - k*9 - arch;
-  const ears = k*3, walking = S.mode === 'walk', carried = S.carrying,
-        upright = walking || carried || w > .55;
+  const ears = k*3;
+  const walking = S.mode === 'walk', carried = S.carrying;
+  const sitting = !walking && !carried && w > .62 && k < .25;   // a fright keeps her low and bristling
+  const upright = walking || carried || sitting;
 
   $('catShadow').innerHTML = `<ellipse cx="${x}" cy="${(c.y+22).toFixed(1)}"
-      rx="${(upright?31:48)+k*8}" ry="8" fill="#000" opacity="${carried ? '.10' : '.34'}"/>`;
+      rx="${(upright?32:48)+k*8}" ry="8" fill="#000" opacity="${carried ? '.10' : (.22+night*.14).toFixed(2)}"/>`;
 
-  let body;
+  let body, hx, hy;
   if(carried){
     const sw = Math.sin(S.t*3.4)*17;
+    hx = x - 17; hy = y - 9 - w*6;
     body = `<path d="M${x+40} ${y+10} q${(24+sw).toFixed(1)} 8 ${(16+sw*.6).toFixed(1)} -18"
               fill="none" stroke="var(--cat)" stroke-width="7" stroke-linecap="round"/>
       <path d="M${x-26} ${y+16} l${(-6+Math.sin(S.t*6)*4).toFixed(1)} 21
@@ -188,43 +278,48 @@ function drawCat(d){
             stroke="var(--cat)" stroke-width="5" stroke-linecap="round" fill="none"/>
       <path d="M${x-48} ${y+14} q-6 -32 26 -38 q34 -6 48 14 q15 21 -6 28 q-34 10 -68 -4 Z" fill="var(--cat)"/>`;
   } else if(walking){
+    hx = x - 4; hy = y - 34;
     body = `<path d="M${x+26} ${y-16} q22 ${(-10+Math.sin(S.t*5)*8).toFixed(1)} 16 -26"
               fill="none" stroke="var(--cat)" stroke-width="7" stroke-linecap="round"/>
       <path d="M${x-22} ${y-4} q-6 -34 14 -40 q26 -8 34 16 q6 22 -6 24 Z" fill="var(--cat)"/>
       <path d="M${x-14} ${y-6} l${(Math.sin(S.t*9)*6).toFixed(1)} 18
                M${x+2} ${y-6} l${(Math.sin(S.t*9+3)*6).toFixed(1)} 18"
             stroke="var(--cat)" stroke-width="5" stroke-linecap="round"/>`;
+  } else if(sitting){
+    const tw = Math.sin(S.t*2.1)*9;
+    hx = x - 4; hy = y - 36;
+    body = `<path d="M${x+22} ${y+14} q${(28+tw).toFixed(1)} 7 ${(20+tw*.5).toFixed(1)} -15"
+              fill="none" stroke="var(--cat)" stroke-width="7" stroke-linecap="round"/>
+      <path d="M${x-24} ${y+16} q-6 -38 16 -44 q28 -8 36 18 q7 24 -7 26 Z" fill="var(--cat)"/>`;
   } else {
     const tail = Math.sin(S.t*(6+k*9))*(5+k*20);
+    hx = x - 17; hy = y - 9 - w*6;
     body = `${bristles(x,y,k)}
       <path d="M${x+42} ${y+8} q${(26+tail*.4).toFixed(1)} ${(-6-k*16).toFixed(1)} ${(14+tail*.5).toFixed(1)} ${(-28-k*10).toFixed(1)}"
             fill="none" stroke="var(--cat)" stroke-width="${(7+k*3).toFixed(1)}" stroke-linecap="round"/>
       <path d="M${x-48} ${y+14} q-6 ${(-32-arch).toFixed(1)} 26 -38 q34 -6 48 14 q15 21 -6 28 q-34 10 -68 -4 Z" fill="var(--cat)"/>`;
   }
 
-  const hy = walking ? y - 34 : y - 9 - w*6;
-  const hx = walking ? x - 4  : x - 17;
-  const open = walking || w > .3 || k > .25;
+  const hr = (walking || sitting) ? 19 : 18;
+  const open = walking || sitting || w > .3 || k > .25;
   const eyeCol = rim > .32 ? CFG.colors.sodium : '#eaf1ee';
+  const two = walking || sitting;
   const eye = open
-    ? `<circle cx="${hx-8}" cy="${hy-2}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${walking?`<circle cx="${hx+8}" cy="${hy-2}" r="2.4" fill="${eyeCol}"/>`:''}`
+    ? `<circle cx="${hx-8}" cy="${hy-2}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${hy-2}" r="2.4" fill="${eyeCol}"/>`:''}`
     : `<path d="M${hx-13} ${hy-1} q5 4 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
 
-  // a thin sodium edge on the lamp side — the only light that touches her
-  const sd = (LAMP.head - c.x) >= 0 ? 1 : -1;              // which side the lamp is on, on screen
+  const sd = (LAMP.head - c.x) >= 0 ? 1 : -1;
   const unflip = `translate(${x.toFixed(1)} 0) scale(${c.face} 1) translate(${(-x).toFixed(1)} 0)`;
-  const shx = x + (hx - x)*c.face, hr = walking ? 19 : 18;   // her head, in screen space
+  const shx = x + (hx - x)*c.face;
   const rimLine = rim < .08 ? '' : `
-    <g transform="${unflip}" fill="none" stroke="${CFG.colors.sodium}" stroke-linecap="round"
-       opacity="${(rim*.95).toFixed(2)}">
+    <g transform="${unflip}" fill="none" stroke="${CFG.colors.sodium}" stroke-linecap="round" opacity="${(rim*.95).toFixed(2)}">
       <path stroke-width="2.4" d="M${(shx+hr*0.34*sd).toFixed(1)} ${(hy-hr*0.94).toFixed(1)}
             A ${hr} ${hr} 0 0 ${sd>0?1:0} ${(shx+hr*0.57*sd).toFixed(1)} ${(hy+hr*0.82).toFixed(1)}"/>
-      <path stroke-width="2.2" d="M${(x+26*sd).toFixed(1)} ${(y-26).toFixed(1)}
-            q${(16*sd).toFixed(1)} 9 ${(14*sd).toFixed(1)} 28"/>
+      <path stroke-width="2.2" d="M${(x+26*sd).toFixed(1)} ${(y-26).toFixed(1)} q${(16*sd).toFixed(1)} 9 ${(14*sd).toFixed(1)} 28"/>
     </g>`;
 
   $('catArt').innerHTML = `${body}
-    <circle cx="${hx}" cy="${hy}" r="${walking?19:18}" fill="var(--cat)"/>
+    <circle cx="${hx}" cy="${hy}" r="${hr}" fill="var(--cat)"/>
     <path d="M${hx-15} ${hy-11} l${(-3+ears).toFixed(1)} ${(-15+ears*2.1).toFixed(1)} l15 6 Z" fill="var(--cat)"/>
     <path d="M${hx+10} ${hy-14} l${(6-ears).toFixed(1)} ${(-14+ears*2.1).toFixed(1)} l9 10 Z" fill="var(--cat)"/>
     ${rimLine}${eye}
@@ -234,13 +329,12 @@ function drawCat(d){
       <path d="M${hx-9} ${hy+11} l${(-17-k*9).toFixed(1)} ${(5+k*4).toFixed(1)}"/>
     </g>`;
 
-  // her reflection in the wet road, mirrored about where she touches it
   const B = c.y + 22, squash = 0.55;
   const ref = $('catRef');
   ref.setAttribute('transform', `translate(0 ${(B*(1+squash)).toFixed(1)}) scale(1 ${-squash})`);
-  ref.setAttribute('opacity', (CFG.scene.reflection * (0.45 + (1-d)*0.55)).toFixed(2));
+  ref.setAttribute('opacity', (CFG.scene.reflection * (0.4 + night*0.6)).toFixed(2));
 
-  if(!S.carrying && S.mode === 'rest' && w < .12 && k < .1){
+  if(!carried && S.mode === 'rest' && w < .12 && k < .1){
     let z = '';
     for(let i=0;i<3;i++){ const p = ((S.t*.35 + i*.33) % 1);
       z += `<text x="${(x+36+p*24).toFixed(0)}" y="${(y-32-p*62).toFixed(0)}" font-family="Fraunces, Georgia, serif"
@@ -251,7 +345,7 @@ function drawCat(d){
 }
 
 // ---- the fish --------------------------------------------------------------
-function drawFish(d){
+function drawFish(){
   const f = S.fish;
   const x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y, w = f.out ? f.left : 1;
   const wob = f.held ? Math.sin(S.t*9)*6 : Math.sin(S.t*1.6)*1.6;
@@ -261,13 +355,10 @@ function drawFish(d){
       <path d="M-17 0 l-12 -9 v18 Z" fill="${CFG.colors.sodium}" opacity=".75"/>
       <circle cx="-1" cy="-2" r="1.9" fill="var(--cat)"/>
     </g>`;
-  // the fish gets a reflection too, so it sits on the same wet ground
   $('fishRef').innerHTML = (!f.out || w <= .02) ? '' : `
     <g transform="translate(${x.toFixed(1)} ${(y+14).toFixed(1)}) scale(${(.6+w*.5).toFixed(2)} ${(-(.6+w*.5)*.5).toFixed(2)})" filter="url(#wet)">
-      <path d="M-17 0 q10 -13 22 0 q-12 13 -22 0 Z" fill="${CFG.colors.sodium}"/>
-    </g>`;
+      <path d="M-17 0 q10 -13 22 0 q-12 13 -22 0 Z" fill="${CFG.colors.sodium}"/></g>`;
   $('fishRef').setAttribute('opacity', f.out ? (CFG.scene.reflection*0.8).toFixed(2) : '0');
-
   $('tray').innerHTML = f.out ? '' : `
     <circle cx="${TRAY.x}" cy="${TRAY.y}" r="30" fill="none" stroke="${CFG.colors.sodium}"
             stroke-width="1.6" stroke-dasharray="3 7" opacity="${(.4+Math.sin(S.t*1.8)*.2).toFixed(2)}"/>`;
@@ -275,58 +366,71 @@ function drawFish(d){
 
 // ---- behaviour -------------------------------------------------------------
 function think(dt){
-  const c = S.cat, M = CFG.motion, night = 1 - daylight();
+  const c = S.cat, M = CFG.motion, d = daylight();
+
+  // she lags the sun by a good few seconds: sleepy in daylight, up after dark
+  S.drowsy += (d - S.drowsy) * dt * 0.7;
+  const nightUp = S.drowsy < 0.45 && CFG.cat.nightRoam > 0;
 
   if(S.held){ S.mode = 'held'; S.idle = 0; }
   else if(S.fish.out && !S.fish.held && S.fish.left > .02 && S.mode !== 'eat'){
-    S.mode = 'walk'; S.target = { x: S.fish.x - 32, y: S.fish.y }; S.idle = 0;
+    S.mode = 'walk'; S.target = { x: S.fish.x - 32, y: S.fish.y }; S.idle = 0; S.pause = 0;
   }
 
   if(S.mode === 'walk' && S.target){
     const dx = S.target.x - c.x, dy = S.target.y - c.y, dd = Math.hypot(dx, dy);
     if(dd > 4) c.face = dx < 0 ? -1 : 1;
     if(dd < 6){ S.mode = (S.fish.out && S.fish.left > .02) ? 'eat' : 'rest';
-                S.eat = CFG.cat.appetite; S.target = null; S.idle = 0; }
+                S.eat = CFG.cat.appetite; S.target = null; S.idle = 0; S.pause = rnd(2,6); }
     else { const v = M.walkSpeed*dt; c.x += dx/dd*v; c.y += dy/dd*v; }
   }
 
   if(S.mode === 'eat'){
     S.eat -= dt;
     S.fish.left = clamp(S.eat / CFG.cat.appetite, 0, 1);
-    if(S.eat <= 0){ S.fish.out = false; S.fish.left = 1; S.mode = 'rest'; S.idle = 0; c.stretch = 1; }
+    if(S.eat <= 0){ S.fish.out = false; S.fish.left = 1; S.mode = 'rest'; S.idle = 0; c.stretch = 1; S.pause = rnd(2,5); }
   }
 
   if(S.mode === 'rest'){
     S.idle += dt;
-    if(CFG.cat.nightRoam > 0 && night > .55 && S.idle > M.settleDelay){
-      S.roamIn -= dt * night * CFG.cat.nightRoam;
-      if(S.roamIn <= 0){
-        S.roamIn = 11 + Math.random()*13; S.mode = 'walk';
-        S.target = { x: PEN.x0+24 + Math.random()*(PEN.x1-PEN.x0-48),
-                     y: PEN.y0+18 + Math.random()*(PEN.y1-PEN.y0-36) };
+    if(nightUp && S.idle > M.settleDelay){
+      S.pause -= dt * CFG.cat.nightRoam;
+      if(S.pause <= 0){
+        S.pause = rnd(3,8);
+        S.mode  = 'walk';
+        S.target = { x: rnd(PEN.x0+30, PEN.x1-30), y: rnd(PEN.y0+20, PEN.y1-20) };
       }
     }
   }
 
-  const up = S.held || S.mode === 'walk' || S.mode === 'eat' || c.puff > .3;
-  c.wake = up ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
-  if(!S.held) c.puff = clamp(c.puff - dt*2.4, 0, 1);   // the fur drops as soon as you let go
-  if(c.stretch > 0 && !S.held) c.stretch = Math.max(0, c.stretch - dt*2.4);
-  c.bob = Math.sin(S.t * (c.wake > .5 ? 3.2 : 1.1)) * (c.wake > .5 ? 1.5 : 2.6);
+  // daylight puts her out; after dark she stays up unless you are holding her
+  const busy  = S.held || S.mode === 'walk' || S.mode === 'eat' || c.puff > .3;
+  const awake = busy || (S.mode === 'rest' && nightUp);
+  c.wake = awake ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
 
-  // the lamp is old and not quite steady
-  S.flick = 1 - Math.max(0, Math.sin(S.t*2.3)*Math.sin(S.t*7.9) - .72) * .5 * CFG.scene.lampFlicker;
+  if(!S.held) c.puff = clamp(c.puff - dt*2.4, 0, 1);
+  if(c.stretch > 0 && !S.held) c.stretch = Math.max(0, c.stretch - dt*2.4);
+  c.bob = Math.sin(S.t * (c.wake > .5 ? 3.2 : 1.1)) * (c.wake > .5 ? 1.4 : 2.6);
+
+  S.flick = 1 - Math.max(0, Math.sin(S.t*2.3)*Math.sin(S.t*7.9) - .74) * .45 * CFG.scene.lampFlicker;
+
+  for(const cl of CLOUD){ cl.x += cl.v*dt*CFG.scene.cloud; if(cl.x - cl.w > W) cl.x = -cl.w; }
 
   if(CFG.scene.rain > 0) for(const r of RAIN){
-    r.y += r.v*dt; r.x -= r.v*dt*0.1;
-    if(r.y > 850){ r.y = 280 + Math.random()*60; r.x = 190 + Math.random()*260; }
+    r.y += r.v*dt; r.x -= r.v*dt*0.11;
+    if(r.y > FLOOR){
+      if(SPLASH.length < 26 && Math.abs(r.x - LAMP.head) < 190)
+        SPLASH.push({ x: r.x, y: rnd(KERB+30, FLOOR-6), a: 0 });
+      r.y = rnd(240, 330); r.x = rnd(0, W + 60);
+    }
   }
+  for(let i=SPLASH.length-1;i>=0;i--){ SPLASH[i].a += dt*2.2; if(SPLASH[i].a >= 1) SPLASH.splice(i,1); }
 }
 
 // ---- input -----------------------------------------------------------------
-const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.4) < 92;
+const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.3) < 96;
 const onFish = p => { const f = S.fish, x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y;
-                      return Math.hypot(p.x - x, p.y - y) < 38; };
+                      return Math.hypot(p.x - x, p.y - y) < 40; };
 const hideTitle = () => { if(!S.touched){ S.touched = true; $('titleG').classList.add('gone'); } };
 
 svg.addEventListener('pointerdown', e => {
@@ -335,8 +439,8 @@ svg.addEventListener('pointerdown', e => {
                  S.fish.x = p.x; S.fish.y = p.y; svg.setPointerCapture(e.pointerId); return; }
   if(onCat(p)){
     S.held = true; S.moved = 0; S.carrying = false;
-    S.cat.puff = Math.min(1, S.cat.puff + .95);        // the touch itself is the fright
-    S.cat.stretch = 0; S.mode = 'held';
+    S.cat.puff = Math.min(1, S.cat.puff + .95);
+    S.cat.stretch = 0; S.mode = 'held'; S.target = null;
     S.grabDX = S.cat.x - p.x; S.grabDY = S.cat.y - p.y;
     svg.setPointerCapture(e.pointerId);
   }
@@ -344,28 +448,30 @@ svg.addEventListener('pointerdown', e => {
 
 svg.addEventListener('pointermove', e => {
   const p = toSvg(e);
-  if(S.fish.held){ S.fish.x = clamp(p.x, 36, 354); S.fish.y = clamp(p.y, PEN.y0-30, 800); return; }
+  if(S.fish.held){ S.fish.x = clamp(p.x, 30, W-30); S.fish.y = clamp(p.y, PEN.y0-30, FLOOR-24); return; }
   if(!S.held) return;
   const nx = clamp(p.x + S.grabDX, PEN.x0, PEN.x1), ny = clamp(p.y + S.grabDY, PEN.y0, PEN.y1);
   S.moved += Math.hypot(nx - S.cat.x, ny - S.cat.y);
   if(S.moved > 10) S.carrying = true;
   if(Math.abs(nx - S.cat.x) > 1.2) S.cat.face = nx < S.cat.x ? -1 : 1;
   S.cat.x = nx; S.cat.y = ny;
-  if(S.moved > 14) S.cat.puff = Math.min(S.cat.puff, .35);   // once carried, she stops bristling
+  if(S.moved > 14) S.cat.puff = Math.min(S.cat.puff, .35);
 });
 
 function release(){
   if(S.fish.held){ S.fish.held = false; return; }
-  if(S.held){ S.held = false; S.carrying = false; S.mode = 'rest'; S.idle = 0; S.cat.stretch = 1; }
+  if(S.held){ S.held = false; S.carrying = false; S.mode = 'rest';
+              S.idle = 0; S.pause = rnd(2,5); S.cat.stretch = 1; }
 }
 addEventListener('pointerup', release);
 addEventListener('pointercancel', release);
+addEventListener('resize', layout);
 
 // ---- loop ------------------------------------------------------------------
 function applyColors(){
   const r = document.documentElement.style;
   r.setProperty('--sodium', CFG.colors.sodium);
-  r.setProperty('--cat',    CFG.colors.cat);
+  r.setProperty('--cat', CFG.colors.cat);
 }
 
 let last = performance.now();
@@ -375,15 +481,16 @@ function frame(now){
   if(!reduce) S.day = (S.day + dt / Math.max(10, CFG.motion.dayLength)) % 1;
   think(dt);
   const d = daylight(), k = duskAmt();
-  applyColors(); drawSky(d, k); drawStreet(d, k); drawFish(d); drawCat(d);
+  applyColors(); drawSky(d, k); drawStreet(d, k); drawFish(); drawCat(d);
   $('grainLayer').setAttribute('opacity', CFG.scene.grain);
   requestAnimationFrame(frame);
 }
+layout();
 requestAnimationFrame(frame);
 
 window.CAT  = () => S;
-window.CATP = { CFG, applyColors, setDay: v => S.day = v,
-                reset(){ Object.assign(S.cat, { x:236, y:640, wake:0, puff:0, stretch:0, face:-1 });
+window.CATP = { CFG, applyColors, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
+                reset(){ Object.assign(S.cat, { x: Math.round(W*0.42), y: 648, wake: 0, puff: 0, stretch: 0, face: -1 });
                          S.fish.out = false; S.fish.left = 1; S.mode = 'rest';
                          S.idle = 0; S.target = null; S.held = S.carrying = false; } };
 })();

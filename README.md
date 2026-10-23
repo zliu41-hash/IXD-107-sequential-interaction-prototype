@@ -10,9 +10,13 @@ IXD 107 · Project 2, Sequential Interactions · Alice Liu · faculty: Samson Kl
 
 ## What it is
 
-One scene. It never cuts away, there is no progress bar, nothing to complete and no way
-to get it wrong. The sun and moon keep crossing whether or not anyone is watching, so the
-piece is as much a window as a toy.
+One scene, filling whatever window it lands in — phone, laptop, projector. It never cuts
+away, there is no progress bar, nothing to complete and no way to get it wrong. The sun and
+moon keep crossing whether or not anyone is watching, so the piece is as much a window as a toy.
+
+**She keeps cat hours.** Through the daylight she sleeps, and anything you do to her ends
+with her going straight back under. After dark she is up: she walks the street on her own,
+sits in the lamplight, and only settles again when the sun comes back round.
 
 Three things you can do, and the cat decides what they mean:
 
@@ -20,10 +24,10 @@ Three things you can do, and the cat decides what they mean:
 |---|---|---|
 | **Startle** | press on her | wakes with a jolt, fur standing on end, whiskers out |
 | **Carry** | drag her anywhere on the street | goes limp in the air, then stretches once and sleeps where you let go |
-| **Coax** | drag the fish out and drop it | gets up, walks over, eats, and sleeps where she ate |
+| **Coax** | drag the fish out and drop it | gets up, walks over, eats, then goes back to whatever the hour asks of her |
 
 Each one leads into the next: she has to notice you before she will follow a fish, and she
-only settles once she has nothing left to do. After dark she gets restless and moves herself.
+only settles once she has nothing left to do.
 
 ## Running it
 
@@ -58,7 +62,12 @@ Built grayscale, on purpose: they test behaviour before the final prototype give
 
 ## Notes on the design
 
-The cat is the only true black in the frame. Everything else is light — the lamp's cone,
-the pool it makes on wet asphalt, her reflection wobbling in it, the drizzle that only shows
-where the light catches it. The palette is sodium orange against petrol blue, the two colours
-a real street actually has at night, and it burns through orange at dawn and dusk.
+The cat is the only true black in the frame. Everything else is light — two lamps down the
+street, the pools they make on wet asphalt, her reflection wobbling in them, puddles holding
+the sky, and drizzle that brightens only where a beam catches it. Two rows of rooftops with a
+band of haze between them give the street depth. The palette is sodium orange against petrol
+blue, the two colours a real street actually has at night, and it burns through orange at dawn
+and dusk.
+
+The stage is a single SVG whose viewBox is rebuilt from the window's aspect ratio, so the
+street grows sideways on a wide screen instead of being letterboxed: same height, more road.
