@@ -11,6 +11,10 @@ sequence of pages, a progress indicator, or a check mark, it is the wrong change
 Saved defaults live in `js/config.js`; the "Street tuning" panel (`js/panel.js`) edits a live
 copy of them and never writes to disk.
 
+After changing anything in `js/` or `css/`, run `python3 stamp.py` before committing. It
+rewrites the `?v=` token on the script and stylesheet tags from a hash of their contents, so
+GitHub Pages can never hand someone a cached copy of the old code under the new HTML.
+
 ## How to ask questions
 
 Use the AskUserQuestion tool for every question. Do not write questions as a list in your
