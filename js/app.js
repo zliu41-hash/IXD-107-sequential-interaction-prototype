@@ -310,8 +310,8 @@ function think(dt){
 
   const up = S.held || S.mode === 'walk' || S.mode === 'eat' || c.puff > .3;
   c.wake = up ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
-  if(!S.held) c.puff = clamp(c.puff - dt*.95, 0, 1);
-  if(c.stretch > 0 && !S.held) c.stretch = Math.max(0, c.stretch - dt*1.3);
+  if(!S.held) c.puff = clamp(c.puff - dt*2.4, 0, 1);   // the fur drops as soon as you let go
+  if(c.stretch > 0 && !S.held) c.stretch = Math.max(0, c.stretch - dt*2.4);
   c.bob = Math.sin(S.t * (c.wake > .5 ? 3.2 : 1.1)) * (c.wake > .5 ? 1.5 : 2.6);
 
   // the lamp is old and not quite steady

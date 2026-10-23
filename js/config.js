@@ -13,9 +13,9 @@ window.CAT_DEFAULTS = {
   },
   motion: {
     dayLength:   110,       // seconds for a whole day and night
-    settleDelay: 1.4,       // seconds left alone before it lies back down
+    settleDelay: 0.4,       // seconds left alone before she lies back down — leave her and she goes straight back
     wakeSpeed:   4.4,       // how sharply it startles
-    sleepSpeed:  0.9,       // how slowly it sinks back under
+    sleepSpeed:  2.6,       // how fast she drops back to sleep once you stop
     walkSpeed:   74         // px per second when it goes to the fish
   },
   scene: {
@@ -27,7 +27,7 @@ window.CAT_DEFAULTS = {
   cat: {
     size:        1.25,      // how big the cat is drawn
     bristle:     1,         // how far the fur stands up
-    nightRoam:   1,         // how often it moves itself after dark (0 = never)
+    nightRoam:   0,         // she never gets up on her own: no interaction, no waking
     appetite:    2.2        // seconds spent eating before lying down again
   }
 };
