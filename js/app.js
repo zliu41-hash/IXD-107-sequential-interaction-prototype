@@ -32,7 +32,7 @@ let LAMP = { post: 300, head: 266, top: 292, base: 476 };
 let PEN  = { x0: 50, x1: 340, y0: 520, y1: 772 };
 let TRAY = { x: 324, y: 788 };
 let STARS = [], FAR = [], NEAR = [], RAIN = [], PUDDLE = [], CLOUD = [];
-const SPLASH = [];
+const SPLASH = [], PING = [];
 
 function buildWorld(){
   LAMP = { post: Math.round(W*0.78), head: Math.round(W*0.78) - 34, top: 292, base: 476 };
@@ -78,7 +78,7 @@ const S = {
   cat: { x: 200, y: 648, wake: 0, puff: 0, stretch: 0, face: -1, bob: 0 },
   held: false, carrying: false, grabDX: 0, grabDY: 0, moved: 0,
   fish: { out: false, held: false, x: 324, y: 788, left: 1 },
-  mode: 'rest', target: null, eat: 0, idle: 0, roamIn: 5, pause: 0,
+  mode: 'rest', target: null, eat: 0, idle: 0, roamIn: 5, pause: 0, trayIn: 0, win: 0,
   drowsy: 1, touched: false, flick: 1
 };
 const cache = { key: {}, html: {} };
@@ -129,12 +129,13 @@ function drawSky(d, dusk){
 
   const farCol  = burn(mixA('#16252f','#9db3ae', d*.5), CFG.colors.dusk, dusk*.34);
   const nearCol = burn(mixA('#030b11','#4a615d', d*.6),  CFG.colors.dusk, dusk*.22);
-  const sig = `${W}|${Math.round(d*26)}|${Math.round(dusk*16)}`;
+  const sig = `${W}|${Math.round(d*26)}|${Math.round(dusk*16)}|${Math.floor(S.win/3.5)}`;
   once('skylineFar',  sig, () => FAR.map(b => `<rect x="${b[0].toFixed(0)}" y="${b[1].toFixed(0)}" width="${b[2].toFixed(0)}" height="${b[3].toFixed(0)}" fill="${farCol}"/>`).join(''));
   once('skylineNear', sig, () => NEAR.map(b => {
     let w = '';
     for(let r=0;r<Math.floor(b[3]/36);r++) for(let q=0;q<Math.floor(b[2]/28);q++){
-      const lit = ((r*7 + q*13 + Math.round(b[0])) % 5) < 2;
+      const seed = (r*7 + q*13 + Math.round(b[0]));
+      const lit = ((seed + Math.floor(S.win/3.5) * ((seed % 3) === 0 ? 1 : 0)) % 5) < 2;
       w += `<rect x="${(b[0]+9+q*28).toFixed(0)}" y="${(b[1]+16+r*36).toFixed(0)}" width="9" height="13"
              fill="${CFG.colors.sodium}" opacity="${(lit ? (1-d)*.82 : (1-d)*.08).toFixed(2)}"/>`;
     }
@@ -147,6 +148,7 @@ function drawSky(d, dusk){
 // ---- street ----------------------------------------------------------------
 function drawStreet(d, dusk){
   const night = 1 - d, lamp = clamp(night*1.55, 0, 1) * S.flick, C = CFG.colors;
+  const sway = Math.sin(S.t*0.55)*2.6 + Math.sin(S.t*1.6)*1.1;   // the lamp is on a pole, and it is windy
 
   once('paving', `${W}|${Math.round(d*18)}`, () => {
     let k = `<rect x="0" y="${KERB}" width="${W}" height="54" fill="#000" opacity="${(.12+d*.12).toFixed(2)}" filter="url(#soft)"/>
@@ -177,7 +179,7 @@ function drawStreet(d, dusk){
 
   const wob = Math.sin(S.t*1.2)*6;
   $('wetwork').innerHTML = `
-    <ellipse cx="${LAMP.head}" cy="690" rx="${Math.min(W*0.62, 230)}" ry="162" fill="url(#pool)" opacity="${lamp.toFixed(2)}"/>
+    <ellipse cx="${(LAMP.head+sway*2.2).toFixed(1)}" cy="690" rx="${Math.min(W*0.62, 230)}" ry="162" fill="url(#pool)" opacity="${lamp.toFixed(2)}"/>
     <path d="M${LAMP.head-9} ${LAMP.base} L${LAMP.head+9} ${LAMP.base}
              L${(LAMP.head+70+wob).toFixed(1)} ${FLOOR} L${(LAMP.head-70+wob).toFixed(1)} ${FLOOR} Z"
           fill="url(#lampSmear)" opacity="${(lamp*.5).toFixed(2)}" filter="url(#soft)"/>`;
@@ -205,10 +207,10 @@ function drawStreet(d, dusk){
   $('props').innerHTML = `
     <g fill="none" stroke="${metal}" stroke-width="4.4" stroke-linecap="round">
       <path d="M${LAMP.post} ${LAMP.base} V${LAMP.top+2}"/>
-      <path d="M${LAMP.post} ${LAMP.top+4} q0 -15 -17 -15 h-17"/>
+      <path d="M${LAMP.post} ${LAMP.top+4} q0 -15 -17 -15 h${(-17+sway).toFixed(1)}"/>
     </g>
-    <circle cx="${LAMP.head}" cy="${LAMP.top+4}" r="104" fill="url(#halo)" opacity="${(lamp*.95).toFixed(2)}"/>
-    <path d="M${LAMP.head-15} ${LAMP.top-5} h30 l-6 19 h-18 Z"
+    <circle cx="${(LAMP.head+sway).toFixed(1)}" cy="${LAMP.top+4}" r="104" fill="url(#halo)" opacity="${(lamp*.95).toFixed(2)}"/>
+    <path d="M${(LAMP.head-15+sway).toFixed(1)} ${LAMP.top-5} h30 l-6 19 h-18 Z"
           fill="${lamp > .22 ? C.sodium : metal}" opacity="${(0.45+lamp*.55).toFixed(2)}"/>
     <g fill="${burn(mixA('#030a10','#3f5551', d*.6), C.dusk, dusk*.16)}" stroke="${metal}" stroke-width="3.4" stroke-linejoin="round">
       <rect x="${Math.round(W*0.05)}" y="384" width="54" height="86" rx="6"/>
@@ -258,7 +260,8 @@ function drawCat(d){
 
   const x = c.x, arch = Math.sin(c.stretch*Math.PI)*11;
   const y = c.y + c.bob - k*9 - arch;
-  const ears = k*3;
+  const twitch = Math.max(0, Math.sin(S.t*0.7)*Math.sin(S.t*2.3) - .86) * 26;
+  const ears = k*3 + twitch;
   const walking = S.mode === 'walk', carried = S.carrying;
   const sitting = !walking && !carried && w > .62 && k < .25;   // a fright keeps her low and bristling
   const upright = walking || carried || sitting;
@@ -301,7 +304,8 @@ function drawCat(d){
   }
 
   const hr = (walking || sitting) ? 19 : 18;
-  const open = walking || sitting || w > .3 || k > .25;
+  const blink = Math.sin(S.t*0.83) > .988 || Math.sin(S.t*1.41 + 2) > .991;
+  const open = (walking || sitting || w > .3 || k > .25) && !(blink && k < .3);
   const eyeCol = rim > .32 ? CFG.colors.sodium : '#eaf1ee';
   const two = walking || sitting;
   const eye = open
@@ -347,7 +351,7 @@ function drawCat(d){
 // ---- the fish --------------------------------------------------------------
 function drawFish(){
   const f = S.fish;
-  const x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y, w = f.out ? f.left : 1;
+  const x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y, w = f.out ? f.left : (S.trayIn > 0 ? 0 : 1);
   const wob = f.held ? Math.sin(S.t*9)*6 : Math.sin(S.t*1.6)*1.6;
   $('fish').innerHTML = w <= .02 ? '' : `
     <g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${(.6+w*.5).toFixed(2)})">
@@ -359,9 +363,13 @@ function drawFish(){
     <g transform="translate(${x.toFixed(1)} ${(y+14).toFixed(1)}) scale(${(.6+w*.5).toFixed(2)} ${(-(.6+w*.5)*.5).toFixed(2)})" filter="url(#wet)">
       <path d="M-17 0 q10 -13 22 0 q-12 13 -22 0 Z" fill="${CFG.colors.sodium}"/></g>`;
   $('fishRef').setAttribute('opacity', f.out ? (CFG.scene.reflection*0.8).toFixed(2) : '0');
-  $('tray').innerHTML = f.out ? '' : `
+  $('tray').innerHTML = (f.out || S.trayIn > 0) ? '' : `
     <circle cx="${TRAY.x}" cy="${TRAY.y}" r="30" fill="none" stroke="${CFG.colors.sodium}"
             stroke-width="1.6" stroke-dasharray="3 7" opacity="${(.4+Math.sin(S.t*1.8)*.2).toFixed(2)}"/>`;
+  $('ping').innerHTML = PING.map(q =>
+    `<ellipse cx="${q.x.toFixed(0)}" cy="${q.y.toFixed(0)}" rx="${(10+q.a*44).toFixed(0)}" ry="${(3+q.a*14).toFixed(0)}"
+       fill="none" stroke="${daylight() > .45 ? '#22383a' : CFG.colors.sodium}" stroke-width="1.8"
+       opacity="${((1-q.a)*.6).toFixed(2)}"/>`).join('');
 }
 
 // ---- behaviour -------------------------------------------------------------
@@ -388,7 +396,8 @@ function think(dt){
   if(S.mode === 'eat'){
     S.eat -= dt;
     S.fish.left = clamp(S.eat / CFG.cat.appetite, 0, 1);
-    if(S.eat <= 0){ S.fish.out = false; S.fish.left = 1; S.mode = 'rest'; S.idle = 0; c.stretch = 1; S.pause = rnd(2,5); }
+    if(S.eat <= 0){ S.fish.out = false; S.fish.left = 0; S.trayIn = 3.2;   // eaten: nothing left on the street
+                    S.mode = 'rest'; S.idle = 0; c.stretch = 1; S.pause = rnd(2,5); }
   }
 
   if(S.mode === 'rest'){
@@ -415,6 +424,11 @@ function think(dt){
   S.flick = 1 - Math.max(0, Math.sin(S.t*2.3)*Math.sin(S.t*7.9) - .74) * .45 * CFG.scene.lampFlicker;
 
   for(const cl of CLOUD){ cl.x += cl.v*dt*CFG.scene.cloud; if(cl.x - cl.w > W) cl.x = -cl.w; }
+
+  if(S.trayIn > 0){ S.trayIn -= dt; if(S.trayIn <= 0) S.fish.left = 1; }
+  S.win += dt;
+
+  for(let i=PING.length-1;i>=0;i--){ PING[i].a += dt*1.6; if(PING[i].a >= 1) PING.splice(i,1); }
 
   if(CFG.scene.rain > 0) for(const r of RAIN){
     r.y += r.v*dt; r.x -= r.v*dt*0.11;
@@ -443,6 +457,13 @@ svg.addEventListener('pointerdown', e => {
     S.cat.stretch = 0; S.mode = 'held'; S.target = null;
     S.grabDX = S.cat.x - p.x; S.grabDY = S.cat.y - p.y;
     svg.setPointerCapture(e.pointerId);
+    return;
+  }
+  // anywhere else on the street: she goes there
+  if(p.y > KERB + 20){
+    S.mode = 'walk'; S.idle = 0; S.pause = rnd(3,7);
+    S.target = { x: clamp(p.x, PEN.x0, PEN.x1), y: clamp(p.y, PEN.y0, PEN.y1) };
+    PING.push({ x: S.target.x, y: S.target.y, a: 0 });
   }
 });
 

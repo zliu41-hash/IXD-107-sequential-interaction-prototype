@@ -24,7 +24,8 @@ Three things you can do, and the cat decides what they mean:
 |---|---|---|
 | **Startle** | press on her | wakes with a jolt, fur standing on end, whiskers out |
 | **Carry** | drag her anywhere on the street | goes limp in the air, then stretches once and sleeps where you let go |
-| **Coax** | drag the fish out and drop it | gets up, walks over, eats, then goes back to whatever the hour asks of her |
+| **Coax** | drag the fish out and drop it | gets up, walks over, eats it — the fish is gone — then goes back to whatever the hour asks of her |
+| **Send** | tap any spot on the street | she gets up and walks there, and settles wherever she lands |
 
 Each one leads into the next: she has to notice you before she will follow a fish, and she
 only settles once she has nothing left to do.
@@ -71,3 +72,8 @@ and dusk.
 
 The stage is a single SVG whose viewBox is rebuilt from the window's aspect ratio, so the
 street grows sideways on a wide screen instead of being letterboxed: same height, more road.
+
+There is not one image file in the project. Every rooftop, puddle, raindrop and whisker is
+drawn from code on each frame, which is why the whole street can change colour across the day
+and reflow to any window. Things move even when nobody is touching it: windows go on and off
+over the evening, the lamp sways on its pole, clouds cross, she blinks and her ears twitch.
