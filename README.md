@@ -22,7 +22,7 @@ happens to be standing.
 |---|---|
 | **click her** | wakes with a jolt, fur standing on end, whiskers out |
 | **click anywhere on the street** | walks there and settles on the spot |
-| **click the fish** | runs over at twice her walking speed, eats it — the fish is gone — and stays put |
+| **click the fish** | it drops onto the street, she runs over at twice her walking speed, crouches, and eats it until it is gone |
 | **drag her** | goes limp in the air, then stretches once and sleeps where you let go |
 | **drag the fish** | put it anywhere you like first; she comes to wherever it lands |
 | **do nothing for ten seconds** | curls up and goes back to sleep |
@@ -79,4 +79,6 @@ and reflow to any window. Things move even when nobody is touching it: windows g
 over the evening, the lamp sways on its pole, clouds cross, she blinks and her ears twitch.
 
 Nothing glows on the cat herself. The lamps, the puddles and the rain carry all the light, and
-she stays a flat black silhouette against them at every hour.
+she stays a flat black silhouette against them at every hour. She has three whiskers on each
+cheek, mirrored, the far set drawn shorter so it reads as the other side of her face; and she
+is drawn facing left, so the stage mirrors her whenever she is travelling right.

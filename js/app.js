@@ -251,7 +251,8 @@ function drawCat(d){
   const sz = CFG.cat.size * clamp(1 + (W/390 - 1)*0.17, 1, 1.75);
   const night = 1 - d;
 
-  const tf = `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) scale(${(c.face*sz).toFixed(3)} ${sz}) translate(${(-c.x).toFixed(1)} ${(-c.y).toFixed(1)})`;
+  // she is drawn facing left, so travelling right mirrors her — otherwise she walks backwards
+  const tf = `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) scale(${(-c.face*sz).toFixed(3)} ${sz}) translate(${(-c.x).toFixed(1)} ${(-c.y).toFixed(1)})`;
   $('catArt').setAttribute('transform', tf);
   $('zzz').setAttribute('transform', tf);
   $('catShadow').setAttribute('transform', tf);
@@ -260,8 +261,8 @@ function drawCat(d){
   const y = c.y + c.bob - k*9 - arch;
   const twitch = Math.max(0, Math.sin(S.t*0.7)*Math.sin(S.t*2.3) - .86) * 26;
   const ears = k*3 + twitch;
-  const walking = S.mode === 'walk', carried = S.carrying;
-  const sitting = !walking && !carried && w > .62 && k < .25;   // a fright keeps her low and bristling
+  const walking = S.mode === 'walk', carried = S.carrying, eating = S.mode === 'eat';
+  const sitting = !walking && !carried && !eating && w > .62 && k < .25;   // a fright keeps her low and bristling
   const upright = walking || carried || sitting;
 
   $('catShadow').innerHTML = `<ellipse cx="${x}" cy="${(c.y+22).toFixed(1)}"
@@ -286,6 +287,12 @@ function drawCat(d){
       <path d="M${x-14} ${y-6} l${(Math.sin(S.t*9)*6).toFixed(1)} 18
                M${x+2} ${y-6} l${(Math.sin(S.t*9+3)*6).toFixed(1)} 18"
             stroke="var(--cat)" stroke-width="5" stroke-linecap="round"/>`;
+  } else if(eating){
+    const nib = Math.sin(S.t*7.5)*2.2, tw = Math.sin(S.t*3.1)*7;
+    hx = x - 30; hy = y - 7 + nib;                    // head down and forward, over the fish
+    body = `<path d="M${x+24} ${y+12} q${(26+tw).toFixed(1)} 5 ${(18+tw*.5).toFixed(1)} -13"
+              fill="none" stroke="var(--cat)" stroke-width="7" stroke-linecap="round"/>
+      <path d="M${x-34} ${y+16} q-7 -29 18 -34 q30 -6 38 14 q8 22 -8 24 Z" fill="var(--cat)"/>`;
   } else if(sitting){
     const tw = Math.sin(S.t*2.1)*9;
     hx = x - 4; hy = y - 36;
@@ -301,14 +308,23 @@ function drawCat(d){
       <path d="M${x-48} ${y+14} q-6 ${(-32-arch).toFixed(1)} 26 -38 q34 -6 48 14 q15 21 -6 28 q-34 10 -68 -4 Z" fill="var(--cat)"/>`;
   }
 
-  const hr = (walking || sitting) ? 19 : 18;
+  const hr = (walking || sitting) ? 19 : (eating ? 17 : 18);
   const blink = Math.sin(S.t*0.83) > .988 || Math.sin(S.t*1.41 + 2) > .991;
-  const open = (walking || sitting || w > .3 || k > .25) && !(blink && k < .3);
+  const open = (walking || sitting || eating || w > .3 || k > .25) && !(blink && k < .3);
   const eyeCol = '#eaf1ee';          // nothing on her glows: she stays a silhouette
-  const two = walking || sitting;
+  const two = walking || sitting;   // both eyes show in the three-quarter poses
   const eye = open
     ? `<circle cx="${hx-8}" cy="${hy-2}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${hy-2}" r="2.4" fill="${eyeCol}"/>`:''}`
     : `<path d="M${hx-13} ${hy-1} q5 4 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
+
+  // Three whiskers on each cheek, mirrored about the muzzle. The far-side set is shorter so
+  // it reads as the other side of her face rather than lines laid across her back.
+  const wfan = (side, len) => `
+      <path d="M${(hx+side*4).toFixed(1)} ${(hy+6).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(-3-k*5).toFixed(1)} ${(side*len).toFixed(1)} ${(-7-k*9).toFixed(1)}"/>
+      <path d="M${(hx+side*5).toFixed(1)} ${(hy+9).toFixed(1)} q${(side*len*.52).toFixed(1)} 1 ${(side*len*1.04).toFixed(1)} ${(1+k*1).toFixed(1)}"/>
+      <path d="M${(hx+side*4).toFixed(1)} ${(hy+12).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(4+k*3).toFixed(1)} ${(side*len).toFixed(1)} ${(9+k*7).toFixed(1)}"/>`;
+  const whiskers = `<g fill="none" stroke="#cfdcd7" stroke-width="1.4" stroke-linecap="round"
+      opacity="${(.5+k*.4).toFixed(2)}">${wfan(-1, 30+k*10)}${wfan(1, 15+k*5)}</g>`;
 
   $('catArt').innerHTML = `${body}
     <circle cx="${hx}" cy="${hy}" r="${hr}" fill="var(--cat)"/>
@@ -316,10 +332,7 @@ function drawCat(d){
     <path d="M${hx+10} ${hy-14} l${(6-ears).toFixed(1)} ${(-14+ears*2.1).toFixed(1)} l9 10 Z" fill="var(--cat)"/>
     ${eye}
     <path d="M${hx} ${hy+6} l-3 3 l3 2 l3 -2 Z" fill="${eyeCol}" opacity=".75"/>
-    <g stroke="#cfdcd7" stroke-width="1.5" stroke-linecap="round" opacity="${(.28+k*.62).toFixed(2)}">
-      <path d="M${hx-9} ${hy+7} l${(-16-k*9).toFixed(1)} ${(1-k*7).toFixed(1)}"/>
-      <path d="M${hx-9} ${hy+11} l${(-17-k*9).toFixed(1)} ${(5+k*4).toFixed(1)}"/>
-    </g>`;
+    ${whiskers}`;
 
   const B = c.y + 22, squash = 0.55;
   const ref = $('catRef');
@@ -368,9 +381,9 @@ function think(dt){
 
   if(S.held){ S.mode = 'held'; S.idle = 0; }
   else if(S.fish.out && !S.fish.held && S.fish.left > .02 && S.mode !== 'eat'){
-    // she stops a body's length short, so she eats beside the fish rather than on top of it
+    // she comes right up to it, close enough that lowering her head reaches it
     const side = S.fish.x > W*0.5 ? -1 : 1;
-    S.mode = 'run'; S.target = { x: clamp(S.fish.x + side*74, PEN.x0, PEN.x1),
+    S.mode = 'run'; S.target = { x: clamp(S.fish.x + side*82, PEN.x0, PEN.x1),
                                  y: clamp(S.fish.y, PEN.y0, PEN.y1) };
   }
 
@@ -427,8 +440,12 @@ const noticed = () => { S.idle = 0; };      // anything you do buys her another 
 
 svg.addEventListener('pointerdown', e => {
   const p = toSvg(e); hideTitle(); noticed();
-  if(onFish(p)){ S.fish.held = true; S.fish.out = true; S.fish.left = 1;
-                 S.fish.x = p.x; S.fish.y = p.y; svg.setPointerCapture(e.pointerId); return; }
+  if(onFish(p)){
+    S.fish.held = true; S.fish.out = true; S.fish.left = 1;
+    // a plain click drops it on the street beside the tray, so she never eats on top of the ring
+    S.fish.x = S.fish.out && p.x === S.fish.x ? p.x : clamp(TRAY.x - 110, 60, W-60);
+    S.fish.y = clamp(TRAY.y + 26, PEN.y0, PEN.y1);
+    svg.setPointerCapture(e.pointerId); return; }
   if(onCat(p)){
     S.held = true; S.moved = 0; S.carrying = false;
     S.cat.puff = Math.min(1, S.cat.puff + .95);
