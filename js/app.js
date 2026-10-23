@@ -323,8 +323,8 @@ function drawCat(d){
       <path d="M${(hx+side*4).toFixed(1)} ${(hy+6).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(-3-k*5).toFixed(1)} ${(side*len).toFixed(1)} ${(-7-k*9).toFixed(1)}"/>
       <path d="M${(hx+side*5).toFixed(1)} ${(hy+9).toFixed(1)} q${(side*len*.52).toFixed(1)} 1 ${(side*len*1.04).toFixed(1)} ${(1+k*1).toFixed(1)}"/>
       <path d="M${(hx+side*4).toFixed(1)} ${(hy+12).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(4+k*3).toFixed(1)} ${(side*len).toFixed(1)} ${(9+k*7).toFixed(1)}"/>`;
-  const whiskers = `<g fill="none" stroke="#cfdcd7" stroke-width="1.4" stroke-linecap="round"
-      opacity="${(.5+k*.4).toFixed(2)}">${wfan(-1, 30+k*10)}${wfan(1, 30+k*10)}</g>`;
+  const whiskers = `<g fill="none" stroke="#cfdcd7" stroke-width="1.1" stroke-linecap="round"
+      opacity="${(.5+k*.4).toFixed(2)}">${wfan(-1, 12+k*5)}${wfan(1, 12+k*5)}</g>`;
 
   $('catArt').innerHTML = `${body}
     <circle cx="${hx}" cy="${hy}" r="${hr}" fill="var(--cat)"/>
