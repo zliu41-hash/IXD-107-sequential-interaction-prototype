@@ -34,6 +34,9 @@ panel if you want her more or less patient.
 
 Open `index.html`. Nothing to build and no dependencies — one SVG, three scripts.
 
+The page loads its own stylesheet and scripts with a timestamp, so a reload always gets the
+current code. No hard refresh, no stale build.
+
 Press **T** (or add `#tools` to the address) for the **Street tuning** panel: light and
 colour, the pace of the day, how wet the road is, how long she stays awake before sleeping,
 how fast she walks and runs, and how much she bristles. *Copy settings* writes a prompt you can

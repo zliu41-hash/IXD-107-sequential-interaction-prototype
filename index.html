@@ -8,7 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=3127cb19">
+<script>
+  /* Load the stylesheet with a fresh token every visit. A fixed ?v= written into this file
+     is no use once a browser has cached the file itself, which is exactly what GitHub Pages
+     lets it do: the page would then pin the CSS to whichever version it was cached with. */
+  document.write('<link rel="stylesheet" href="css/style.css?v=' + Date.now() + '">');
+</script>
+<noscript><link rel="stylesheet" href="css/style.css"></noscript>
 </head>
 <body>
 <svg id="stage" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice"
@@ -98,8 +104,18 @@
   </g>
 </svg>
 <div id="panel" class="panel" hidden aria-label="Street tuning"></div>
-<script src="js/config.js?v=3127cb19"></script>
-<script src="js/app.js?v=3127cb19"></script>
-<script src="js/panel.js?v=3127cb19"></script>
+<script>
+  /* Same reason: fetch the current code on every visit rather than whatever the browser kept.
+     async = false keeps config -> app -> panel running in that order. */
+  (function () {
+    var v = Date.now();
+    ['js/config.js', 'js/app.js', 'js/panel.js'].forEach(function (src) {
+      var el = document.createElement('script');
+      el.src = src + '?v=' + v;
+      el.async = false;
+      document.head.appendChild(el);
+    });
+  })();
+</script>
 </body>
 </html>

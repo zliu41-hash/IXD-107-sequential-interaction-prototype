@@ -16,9 +16,11 @@ in the frame belongs to the lamps, the puddles and the rain.
 Saved defaults live in `js/config.js`; the "Street tuning" panel (`js/panel.js`) edits a live
 copy of them and never writes to disk.
 
-After changing anything in `js/` or `css/`, run `python3 stamp.py` before committing. It
-rewrites the `?v=` token on the script and stylesheet tags from a hash of their contents, so
-GitHub Pages can never hand someone a cached copy of the old code under the new HTML.
+`index.html` loads the stylesheet and the three scripts itself, appending `?v=<timestamp>` at
+load time, so every visit fetches the current code. Do not replace that with plain `<link>` and
+`<script src>` tags: a fixed token written into the file is useless once the browser has cached
+the file itself, which is what left people looking at old builds. Nothing needs stamping
+before a commit.
 
 ## How to ask questions
 
