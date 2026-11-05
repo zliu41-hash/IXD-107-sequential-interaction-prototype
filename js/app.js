@@ -27,13 +27,18 @@ const PAL = { road: [20,34,42], sky: [11,26,36] };
 
 // ---- the world, sized to whatever window it lands in -----------------------
 const KERB = 470, FLOOR = 844;
-const CONE_TOP = 300, CONE_SPREAD = 190;          // the lamp's cone, in one place so rain can respect it
+const CONE_TOP = 300;
+let CONE_SPREAD = 190;    // set from the frame width: a fixed cone swallows a phone screen whole,
+                          // leaving nowhere for her to be out in the rain
 
 // how sheltered a point is: 1 under the lamp, 0 out in the rain, soft across the edge
-function dryness(x, y){
+function coneHalf(y){
   const t = clamp((y - CONE_TOP) / (FLOOR - CONE_TOP), 0, 1);
-  const half = 16 + t*(CONE_SPREAD - 16);
-  return clamp(1 - (Math.abs(x - LAMP.head) - (half - 52)) / 52, 0, 1);
+  return 16 + t*(CONE_SPREAD - 16);
+}
+function dryness(x, y){
+  const edge = Math.max(18, CONE_SPREAD*0.28);
+  return clamp(1 - (Math.abs(x - LAMP.head) - (coneHalf(y) - edge)) / edge, 0, 1);
 }
 const sheltered = (x, y) => dryness(x, y) > .55;
 // she is scaled up on wider screens; anything measured against her body has to follow
@@ -43,9 +48,7 @@ const catScale = () => CFG.cat.size * clamp(1 + (W/390 - 1)*0.17, 1, 1.75);
 // puts her against the frame edge, far from the one thing she is supposed to be compared with
 function startSpot(){
   const y = 648;
-  const t = clamp((y - CONE_TOP) / (FLOOR - CONE_TOP), 0, 1);
-  const half = 16 + t*(CONE_SPREAD - 16);
-  return { x: Math.round(clamp(LAMP.head - half - 150, PEN.x0 + 30, PEN.x1 - 30)), y };
+  return { x: Math.round(clamp(LAMP.head - coneHalf(y) - CONE_SPREAD*1.3, PEN.x0 + 30, PEN.x1 - 30)), y };
 }
 let W = 390;                                   // design width; height is always 844
 let LAMP = { post: 300, head: 266, top: 292, base: 476 };
@@ -55,9 +58,11 @@ let STARS = [], FAR = [], NEAR = [], RAIN = [], PUDDLE = [], CLOUD = [];
 const SPLASH = [], PING = [];
 
 function buildWorld(){
-  LAMP = { post: Math.round(W*0.78), head: Math.round(W*0.78) - 34, top: 292, base: 476 };
+  // centred: the cat's start, the dry patch and the fish are all measured off the lamp
+  LAMP = { post: Math.round(W*0.5) + 34, head: Math.round(W*0.5), top: 292, base: 476 };
+  CONE_SPREAD = Math.round(clamp(W*0.24, 92, 240));
   PEN  = { x0: 54, x1: W - 54, y0: 520, y1: 778 };
-  TRAY = { x: Math.round(clamp(LAMP.head + 76, 60, W - 60)), y: 736 };   // under the lamp, so she eats in the dry
+  TRAY = { x: Math.round(clamp(LAMP.head + CONE_SPREAD*0.45, 60, W - 60)), y: 736 };   // under the lamp, so she eats in the dry
 
   STARS = [];
   for(let i=0;i<Math.round(W/11);i++) STARS.push({ x: rnd(6,W-6), y: rnd(26,430), r: rnd(.6,1.7), p: rnd(0,7) });
@@ -96,7 +101,7 @@ function layout(){
 
 // ---- state -----------------------------------------------------------------
 const S = {
-  t: 0, day: 0.60,                               // 0 dawn · .25 noon · .5 dusk · .75 midnight
+  t: 0, day: 0.78,                               // midnight, and it stays there — this piece is a night piece
   cat: { x: 96, y: 648, wake: 0, puff: 0, stretch: 0, face: 1, bob: 0 },   // out in the rain, looking toward the lamp
   held: false, carrying: false, grabDX: 0, grabDY: 0, moved: 0,
   fish: { out: false, held: false, x: 268, y: 736, left: 1 },
@@ -208,7 +213,7 @@ function drawStreet(d, dusk){
              L${(LAMP.head+70+wob).toFixed(1)} ${FLOOR} L${(LAMP.head-70+wob).toFixed(1)} ${FLOOR} Z"
           fill="url(#lampSmear)" opacity="${(lamp*.5).toFixed(2)}" filter="url(#soft)"/>`;
 
-  const spread = 190;
+  const spread = CONE_SPREAD;
   $('coneShape').setAttribute('d',
     `M${LAMP.head-16} ${LAMP.top+8} L${LAMP.head+16} ${LAMP.top+8} L${LAMP.head+spread} ${FLOOR} L${LAMP.head-spread} ${FLOOR} Z`);
   $('coneG').innerHTML = lamp < .04 ? '' :
@@ -241,14 +246,6 @@ function drawStreet(d, dusk){
       <rect x="${Math.round(W*0.05)}" y="384" width="54" height="86" rx="6"/>
       <path d="M${Math.round(W*0.05)+8} 384 v-14 h38 v14" fill="none"/>
       <path d="M${Math.round(W*0.05)+13} 404 v50 M${Math.round(W*0.05)+27} 404 v50 M${Math.round(W*0.05)+41} 404 v50" stroke-width="2" opacity=".45"/>
-    </g>
-    <g opacity="${(0.6+lamp*0.4).toFixed(2)}">
-      <g fill="none" stroke="${metal}" stroke-width="3.4" stroke-linecap="round">
-        <path d="M${Math.round(W*0.19)} 474 V318"/><path d="M${Math.round(W*0.19)} 320 q0 -12 -13 -12 h-13"/>
-      </g>
-      <circle cx="${Math.round(W*0.19)-26}" cy="322" r="70" fill="url(#halo)" opacity="${(lamp*.72).toFixed(2)}"/>
-      <path d="M${Math.round(W*0.19)-37} 314 h22 l-5 15 h-12 Z" fill="${lamp > .22 ? C.sodium : metal}" opacity="${(0.45+lamp*.55).toFixed(2)}"/>
-      <ellipse cx="${Math.round(W*0.19)-26}" cy="620" rx="128" ry="104" fill="url(#pool)" opacity="${(lamp*.5).toFixed(2)}"/>
     </g>
     <g stroke="${metal}" stroke-width="3" fill="none" opacity=".9">
       <path d="M${Math.round(W*0.30)} 470 v-56 M${Math.round(W*0.30)+22} 470 v-56 M${Math.round(W*0.30)+44} 470 v-56"/>
@@ -442,7 +439,7 @@ function hintThink(dt){
   // there is only one dry place on this street and the lamp already made it
   if(STEPS[h.step] === 'walk' && !h.spot){
     // left of the lamp's centre, so she does not land on top of the fish tray
-    h.spot = { x: clamp(LAMP.head - 72, PEN.x0 + 46, PEN.x1 - 46),
+    h.spot = { x: clamp(LAMP.head - CONE_SPREAD*0.22, PEN.x0 + 46, PEN.x1 - 46),
                y: clamp(686, PEN.y0, PEN.y1), r: 96, glow: .35, dim: .20 };
   }
 
@@ -583,7 +580,7 @@ function think(dt){
 }
 
 // ---- input -----------------------------------------------------------------
-const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.3) < 96;
+const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.3) < 64*catScale();
 const onFish = p => { if(S.fishEaten) return false;
                       const f = S.fish, x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y;
                       return Math.hypot(p.x - x, p.y - y) < 40; };
@@ -602,7 +599,7 @@ svg.addEventListener('pointerdown', e => {
     S.fish.held = true; S.fish.out = true; S.fish.left = 1;
     // a plain click drops it just beside the tray — far enough off the ring, near enough
     // that fetching it does not walk her back out into the rain
-    S.fish.x = S.fish.out && p.x === S.fish.x ? p.x : clamp(TRAY.x - 46, 60, W-60);
+    S.fish.x = S.fish.out && p.x === S.fish.x ? p.x : clamp(TRAY.x - CONE_SPREAD*0.25, 60, W-60);
     S.fish.y = clamp(TRAY.y + 26, PEN.y0, PEN.y1);
     svg.setPointerCapture(e.pointerId); return; }
   if(onCat(p)){
@@ -657,7 +654,6 @@ let last = performance.now();
 function frame(now){
   const dt = Math.min(.05, (now - last)/1000); last = now;
   S.t += dt;
-  if(!reduce) S.day = (S.day + dt / Math.max(10, CFG.motion.dayLength)) % 1;
   think(dt); hintThink(dt);
   const d = daylight(), k = duskAmt();
   applyColors(); drawSky(d, k); drawStreet(d, k); drawHint(d); drawFish(); drawCat(d);

@@ -18,6 +18,12 @@ point, not an obstacle to work around. The measure of the piece is whether someo
 never seen it gets from start to finish without being told anything, so a suggestion that is
 too faint to act on is a defect, not restraint.
 
+The scene is night and only night — the day cycle is gone, `S.day` sits at midnight and
+nothing advances it. There is one street lamp, in the middle of the frame, and the cat's
+starting place, the dry patch and the fish tray are all measured off it, so the whole piece
+stays centred at any window size. The cone's width is measured off the frame too: fixed at
+190 it swallowed a phone screen whole and left her nowhere to be rained on.
+
 It rains everywhere except inside the lamp's cone, and that one dry, warm patch is what the
 whole piece turns on: she starts asleep out in the rain, shivers once she is awake and leans
 toward the light, and the second step completes only when she is actually under the lamp. You
