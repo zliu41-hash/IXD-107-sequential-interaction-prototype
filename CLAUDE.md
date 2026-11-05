@@ -8,6 +8,12 @@ The final prototype is **one continuous scene**. There are no screens to flip be
 step tracker, no success or failure states, and nothing that ends. If a change would add a
 sequence of pages, a progress indicator, or a check mark, it is the wrong change.
 
+The scene may *suggest* an order. A lit patch of road under the next thing worth touching,
+and her looking at it, are allowed and are the only way the piece guides anyone — there are
+no words, arrows or buttons. A suggestion never locks anything: every interaction stays
+available at all times, ignoring a suggestion costs nothing, and being "behind" is not a
+state the piece can be in.
+
 She starts asleep, wakes when clicked, walks to wherever the street is clicked, runs to the
 fish when the fish is clicked, and goes back to sleep `CFG.motion.sleepAfter` seconds after the
 last interaction. Nothing drawn on the cat glows — she is a flat silhouette, and all the light

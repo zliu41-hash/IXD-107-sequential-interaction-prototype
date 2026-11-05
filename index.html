@@ -48,6 +48,11 @@
     <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1">
       <stop id="hazeA" offset="0%"/><stop id="hazeB" offset="100%"/>
     </linearGradient>
+    <radialGradient id="hintDim" gradientUnits="userSpaceOnUse" cx="195" cy="650" r="240">
+      <stop offset="0%"   stop-color="#000" stop-opacity="0"/>
+      <stop offset="42%"  stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="1"/>
+    </radialGradient>
     <radialGradient id="vignette" cx="50%" cy="46%" r="76%">
       <stop offset="52%"  stop-color="#000" stop-opacity="0"/>
       <stop offset="100%" stop-color="#000" stop-opacity=".6"/>
@@ -86,6 +91,7 @@
   <g id="props"></g>
 
   <g id="ping"></g>
+  <g id="hintG" pointer-events="none"></g>
   <g id="fishRef" opacity="0"></g>
   <g id="fish"></g>
   <g id="catShadow"></g>
@@ -94,6 +100,7 @@
   <g id="zzz"></g>
   <g id="tray"></g>
 
+  <rect id="hintDimRect" width="100%" height="100%" fill="url(#hintDim)" opacity="0" pointer-events="none"/>
   <rect width="100%" height="100%" fill="url(#vignette)" pointer-events="none"/>
   <rect id="grainLayer" width="100%" height="100%" filter="url(#grain)" opacity=".06"
         style="mix-blend-mode:overlay" pointer-events="none"/>

@@ -80,7 +80,8 @@ const S = {
   fish: { out: false, held: false, x: 268, y: 736, left: 1 },
   mode: 'rest', target: null, eat: 0, idle: 999, win: 0,   // idle starts high: she begins asleep
   fishEaten: false,                                        // once she has had it, there is no more fish
-  drowsy: 1, touched: false, flick: 1
+  drowsy: 1, touched: false, flick: 1,
+  hint: { step: 0, k: 0, spot: null, sawCarry: false, ping: 0 }   // the street's suggestion, nothing more
 };
 const cache = { key: {}, html: {} };
 const once = (slot, key, make) => { if(cache.key[slot] !== key){ cache.key[slot] = key; $(slot).innerHTML = make(); } };
@@ -374,6 +375,89 @@ function drawFish(){
        opacity="${((1-q.a)*.6).toFixed(2)}"/>`).join('');
 }
 
+// ---- the nudge -------------------------------------------------------------
+// She still accepts everything at once, exactly as before. This only suggests an
+// order: the street lights the one thing worth touching next, and she looks at it.
+// Ignore the suggestion and nothing breaks — it simply waits where it is.
+const STEPS = ['wake', 'carry', 'feed', 'done'];
+const HINT_WAIT = 2.6;          // seconds of nobody doing anything before the street says anything
+
+function hintTarget(){
+  const c = S.cat, f = S.fish;
+  switch(STEPS[S.hint.step]){
+    case 'wake':  return { x: c.x, y: c.y + 20, r: 94, glow: .75 };
+    case 'carry': return S.hint.spot;
+    case 'feed':  return { x: f.out ? f.x : TRAY.x, y: (f.out ? f.y : TRAY.y) + 8, r: 60, glow: 1 };
+    default:      return null;
+  }
+}
+
+function hintThink(dt){
+  const h = S.hint, step = STEPS[h.step];
+
+  const advance = () => { h.step = Math.min(h.step + 1, STEPS.length - 1);
+                          h.k = 0; h.spot = null; h.sawCarry = false; h.ping = 0; };
+
+  // read what she is already doing — the input handlers are not touched
+  if(step === 'wake' && S.cat.puff > .5) advance();
+  else if(step === 'carry'){
+    if(S.carrying) h.sawCarry = true;
+    if(h.sawCarry && !S.held) advance();
+    else if(h.spot && S.mode === 'rest' && !S.held
+            && Math.hypot(S.cat.x - h.spot.x, S.cat.y - h.spot.y) < 56) advance();   // walked there instead: fine
+  }
+  else if(step === 'feed' && S.fishEaten) advance();
+
+  // a lit patch of empty road, on whichever side she has more room
+  if(STEPS[h.step] === 'carry' && !h.spot){
+    const away = S.cat.x < W*0.5 ? 1 : -1;
+    h.spot = { x: clamp(S.cat.x + away*W*0.30, PEN.x0 + 34, PEN.x1 - 34),
+               y: clamp(S.cat.y + 24, PEN.y0, PEN.y1), r: 84, glow: 1.15 };
+  }
+
+  const settled = S.idle > HINT_WAIT && !S.held && !S.fish.held
+                  && S.mode !== 'walk' && S.mode !== 'run' && S.mode !== 'eat';
+  const want = (STEPS[h.step] === 'done' || !settled) ? 0 : 1;
+  h.k += (want - h.k) * Math.min(1, dt*2.2);
+
+  // bare road says "here" the only way this street knows how: the same ripple you get
+  // when you click a spot and send her to it
+  if(STEPS[h.step] === 'carry' && h.k > .5 && h.spot){
+    h.ping += dt;
+    if(h.ping > 1.7){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }
+  }
+
+  // she looks at whatever the street is pointing out
+  const t = hintTarget();
+  if(t && h.k > .35 && S.mode === 'rest' && !S.held && Math.abs(t.x - S.cat.x) > 26)
+    S.cat.face = t.x < S.cat.x ? -1 : 1;
+}
+
+function drawHint(d){
+  const g = $('hintG'), dim = $('hintDimRect'), grad = $('hintDim');
+  const h = S.hint, t = hintTarget();
+  if(!t || h.k < .012){
+    if(g.innerHTML) g.innerHTML = '';
+    if(dim.getAttribute('opacity') !== '0') dim.setAttribute('opacity', '0');
+    return;
+  }
+  const breathe = .62 + .38*Math.sin(S.t*1.5);
+
+  // the street goes quiet everywhere but here — the lamp already owns most of the road,
+  // so the only way to point at something is to take the light off everything else
+  grad.setAttribute('cx', t.x.toFixed(1));
+  grad.setAttribute('cy', t.y.toFixed(1));
+  grad.setAttribute('r',  (t.r * 2.7 * (1 + .04*Math.sin(S.t*1.5))).toFixed(1));
+  dim.setAttribute('opacity', (h.k * (.34 + .16*breathe)).toFixed(3));
+
+  // and a little warmth underneath, for the steps where the target is bare road
+  const a = h.k * breathe * clamp(.4 + (1-d)*.8, .4, 1) * .85 * (t.glow || 1);
+  const r = t.r * (1 + .06*Math.sin(S.t*1.5));
+  g.innerHTML = `<ellipse cx="${t.x.toFixed(1)}" cy="${t.y.toFixed(1)}" `
+              + `rx="${r.toFixed(1)}" ry="${(r*0.42).toFixed(1)}" `
+              + `fill="url(#pool)" opacity="${a.toFixed(3)}"/>`;
+}
+
 // ---- behaviour -------------------------------------------------------------
 function think(dt){
   const c = S.cat, M = CFG.motion, d = daylight();
@@ -496,9 +580,9 @@ function frame(now){
   const dt = Math.min(.05, (now - last)/1000); last = now;
   S.t += dt;
   if(!reduce) S.day = (S.day + dt / Math.max(10, CFG.motion.dayLength)) % 1;
-  think(dt);
+  think(dt); hintThink(dt);
   const d = daylight(), k = duskAmt();
-  applyColors(); drawSky(d, k); drawStreet(d, k); drawFish(); drawCat(d);
+  applyColors(); drawSky(d, k); drawStreet(d, k); drawHint(d); drawFish(); drawCat(d);
   $('grainLayer').setAttribute('opacity', CFG.scene.grain);
   requestAnimationFrame(frame);
 }
@@ -509,5 +593,6 @@ window.CAT  = () => S;
 window.CATP = { CFG, applyColors, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
                 reset(){ Object.assign(S.cat, { x: Math.round(W*0.42), y: 648, wake: 0, puff: 0, stretch: 0, face: -1 });
                          S.fish.out = false; S.fish.left = 1; S.fishEaten = false; S.mode = 'rest';
-                         S.idle = 999; S.target = null; S.held = S.carrying = false; } };
+                         S.idle = 999; S.target = null; S.held = S.carrying = false;
+                         S.hint = { step: 0, k: 0, spot: null, sawCarry: false, ping: 0 }; } };
 })();
