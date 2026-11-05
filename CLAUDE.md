@@ -18,8 +18,11 @@ point, not an obstacle to work around. The measure of the piece is whether someo
 never seen it gets from start to finish without being told anything, so a suggestion that is
 too faint to act on is a defect, not restraint.
 
-She starts asleep and wakes when clicked; then she can be carried, and then fed. Walking to a
-clicked spot still exists in the code but no step accepts it, so it never runs. The sequence
+It rains everywhere except inside the lamp's cone, and that one dry, warm patch is what the
+whole piece turns on: she starts asleep out in the rain, shivers once she is awake and leans
+toward the light, and the carrying step only completes when she is actually under the lamp —
+setting her down still in the wet achieves nothing. Walking to a clicked spot still exists in
+the code but no step accepts it, so it never runs. The sequence
 owns her sleep — `CFG.motion.sleepAfter` no longer puts her under mid-sequence, and once she
 has eaten she settles for good. A touch after that starts the whole thing over. Nothing drawn on the cat glows — she is a flat silhouette, and all the light
 in the frame belongs to the lamps, the puddles and the rain.

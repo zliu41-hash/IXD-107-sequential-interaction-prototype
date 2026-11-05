@@ -27,6 +27,15 @@ const PAL = { road: [20,34,42], sky: [11,26,36] };
 
 // ---- the world, sized to whatever window it lands in -----------------------
 const KERB = 470, FLOOR = 844;
+const CONE_TOP = 300, CONE_SPREAD = 190;          // the lamp's cone, in one place so rain can respect it
+
+// how sheltered a point is: 1 under the lamp, 0 out in the rain, soft across the edge
+function dryness(x, y){
+  const t = clamp((y - CONE_TOP) / (FLOOR - CONE_TOP), 0, 1);
+  const half = 16 + t*(CONE_SPREAD - 16);
+  return clamp(1 - (Math.abs(x - LAMP.head) - (half - 52)) / 52, 0, 1);
+}
+const sheltered = (x, y) => dryness(x, y) > .55;
 let W = 390;                                   // design width; height is always 844
 let LAMP = { post: 300, head: 266, top: 292, base: 476 };
 let PEN  = { x0: 50, x1: 340, y0: 520, y1: 772 };
@@ -49,7 +58,7 @@ function buildWorld(){
   while(x < W + 30){ const w = rnd(54,120), h = rnd(70,186); NEAR.push([x, KERB-h, w, h]); x += w + rnd(1,10); }
 
   RAIN = [];
-  for(let i=0;i<Math.round(W/7);i++) RAIN.push({ x: rnd(0,W), y: rnd(0,FLOOR), v: rnd(340,620), l: rnd(10,26) });
+  for(let i=0;i<Math.round(W/4.4);i++) RAIN.push({ x: rnd(0,W), y: rnd(0,FLOOR), v: rnd(340,620), l: rnd(10,26) });
 
   PUDDLE = [];
   for(let i=0;i<Math.round(W/150)+4;i++){
@@ -75,12 +84,12 @@ function layout(){
 // ---- state -----------------------------------------------------------------
 const S = {
   t: 0, day: 0.60,                               // 0 dawn · .25 noon · .5 dusk · .75 midnight
-  cat: { x: 200, y: 648, wake: 0, puff: 0, stretch: 0, face: -1, bob: 0 },
+  cat: { x: 96, y: 648, wake: 0, puff: 0, stretch: 0, face: 1, bob: 0 },   // out in the rain, looking toward the lamp
   held: false, carrying: false, grabDX: 0, grabDY: 0, moved: 0,
   fish: { out: false, held: false, x: 268, y: 736, left: 1 },
   mode: 'rest', target: null, eat: 0, idle: 999, win: 0,   // idle starts high: she begins asleep
   fishEaten: false,                                        // once she has had it, there is no more fish
-  drowsy: 1, touched: false, flick: 1,
+  drowsy: 1, touched: false, flick: 1, calm: 0,
   hint: { step: 0, k: 0, spot: null, sawCarry: false, ping: 0, flare: 0 }   // the street's suggestion, nothing more
 };
 const cache = { key: {}, html: {} };
@@ -194,15 +203,16 @@ function drawStreet(d, dusk){
        fill="url(#cone)" opacity="${(lamp*.68).toFixed(2)}" filter="url(#soft)"/>`;
 
   if(CFG.scene.rain > 0 && lamp > .25){
-    $('rainAll').innerHTML = RAIN.map(r =>
+    const wet = CFG.scene.rain * (1 - S.calm*.78);          // it slackens off once she is settled
+    $('rainAll').innerHTML = RAIN.filter(r => dryness(r.x, r.y) < .5).map(r =>
       `<line x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x-4).toFixed(1)}" y2="${(r.y+r.l).toFixed(1)}"
-         stroke="#cfe0e4" stroke-width="1" opacity="${(.09*lamp*CFG.scene.rain).toFixed(2)}"/>`).join('');
-    $('rain').innerHTML = RAIN.map(r =>
+         stroke="#cfe0e4" stroke-width="1" opacity="${(.17*lamp*wet).toFixed(2)}"/>`).join('');
+    $('rain').innerHTML = RAIN.filter(r => dryness(r.x, r.y) < .5).map(r =>
       `<line x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x-4).toFixed(1)}" y2="${(r.y+r.l).toFixed(1)}"
-         stroke="${C.sodium}" stroke-width="1.2" opacity="${(.32*lamp*CFG.scene.rain).toFixed(2)}"/>`).join('');
+         stroke="${C.sodium}" stroke-width="1.2" opacity="${(.32*lamp*wet).toFixed(2)}"/>`).join('');
     $('splash').innerHTML = SPLASH.map(s =>
       `<ellipse cx="${s.x.toFixed(0)}" cy="${s.y.toFixed(0)}" rx="${(2+s.a*10).toFixed(1)}" ry="${(0.6+s.a*3).toFixed(1)}"
-         fill="none" stroke="${C.sodium}" stroke-width="1" opacity="${((1-s.a)*.45*lamp).toFixed(2)}"/>`).join('');
+         fill="none" stroke="${C.sodium}" stroke-width="1" opacity="${((1-s.a)*.45*lamp*(1-S.calm*.78)).toFixed(2)}"/>`).join('');
   } else { $('rain').innerHTML = ''; $('rainAll').innerHTML = ''; $('splash').innerHTML = ''; }
 
   const metal = burn(mixA('#070f16','#445b57', d*.72), C.dusk, dusk*.24);
@@ -255,8 +265,16 @@ function drawCat(d){
 
   // she is drawn facing left, so travelling right mirrors her — otherwise she walks backwards
   const tf = `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) scale(${(-c.face*sz).toFixed(3)} ${sz}) translate(${(-c.x).toFixed(1)} ${(-c.y).toFixed(1)})`;
-  $('catArt').setAttribute('transform', tf);
-  $('zzz').setAttribute('transform', tf);
+
+  // out in the rain she trembles, and once awake she tips toward the dry light.
+  // this is the whole instruction for the carrying step — no marker, no words
+  const cold = (1 - dryness(c.x, c.y)) * (.35 + .65*w) * (S.held ? 0 : 1);
+  const shiv = cold * Math.sin(S.t*26) * 2.6;
+  const lean = cold * w * (LAMP.head > c.x ? 1 : -1) * 4.5;
+  const tfWet = `translate(${shiv.toFixed(2)} 0) rotate(${lean.toFixed(2)} ${c.x.toFixed(1)} ${(c.y+20).toFixed(1)}) ${tf}`;
+
+  $('catArt').setAttribute('transform', tfWet);
+  $('zzz').setAttribute('transform', tfWet);
   $('catShadow').setAttribute('transform', tf);
 
   const x = c.x, arch = Math.sin(c.stretch*Math.PI)*11;
@@ -385,9 +403,9 @@ const HINT_WAIT = 2.6;          // seconds of nobody doing anything before the s
 function hintTarget(){
   const c = S.cat, f = S.fish;
   switch(STEPS[S.hint.step]){
-    case 'wake':  return { x: c.x, y: c.y + 20, r: 94, glow: .75 };
-    case 'carry': return S.hint.spot;
-    case 'feed':  return { x: f.out ? f.x : TRAY.x, y: (f.out ? f.y : TRAY.y) + 8, r: 60, glow: 1 };
+    case 'wake':  return { x: c.x, y: c.y + 20, r: 94, glow: .75, dim: .34 };
+    case 'carry': return S.hint.spot;           // the dry ground under the lamp
+    case 'feed':  return { x: f.out ? f.x : TRAY.x, y: (f.out ? f.y : TRAY.y) + 8, r: 60, glow: 1, dim: .22 };
     default:      return null;
   }
 }
@@ -404,28 +422,24 @@ function hintThink(dt){
   if(step === 'wake' && S.cat.puff > .5) advance();
   else if(step === 'carry'){
     if(S.carrying) h.sawCarry = true;
-    if(h.sawCarry && !S.held) advance();
+    // set her down still in the rain and nothing has been achieved; she keeps shivering
+    if(h.sawCarry && !S.held && sheltered(S.cat.x, S.cat.y)) advance();
   }
   else if(step === 'feed' && S.fishEaten) advance();
 
-  // a lit patch of empty road, on whichever side she has more room
+  // there is only one dry place on this street and the lamp already made it
   if(STEPS[h.step] === 'carry' && !h.spot){
-    const away = S.cat.x < W*0.5 ? 1 : -1;
-    h.spot = { x: clamp(S.cat.x + away*W*0.30, PEN.x0 + 34, PEN.x1 - 34),
-               y: clamp(S.cat.y + 24, PEN.y0, PEN.y1), r: 84, glow: 1.15 };
+    // left of the lamp's centre, so she does not land on top of the fish tray
+    h.spot = { x: clamp(LAMP.head - 72, PEN.x0 + 46, PEN.x1 - 46),
+               y: clamp(686, PEN.y0, PEN.y1), r: 96, glow: .35, dim: .20 };
   }
+
+  S.calm += ((STEPS[h.step] === 'done' ? 1 : 0) - S.calm) * Math.min(1, dt*.5);
 
   const settled = S.idle > HINT_WAIT && !S.held && !S.fish.held
                   && S.mode !== 'walk' && S.mode !== 'run' && S.mode !== 'eat';
   const want = (STEPS[h.step] === 'done' || !settled) ? 0 : 1;
   h.k += (want - h.k) * Math.min(1, dt*2.2);
-
-  // bare road says "here" the only way this street knows how: the same ripple you get
-  // when you click a spot and send her to it
-  if(STEPS[h.step] === 'carry' && h.k > .5 && h.spot){
-    h.ping += dt;
-    if(h.ping > 1.7){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }
-  }
 
   // she looks at whatever the street is pointing out
   const t = hintTarget();
@@ -449,7 +463,8 @@ function drawHint(d){
   grad.setAttribute('cy', t.y.toFixed(1));
   grad.setAttribute('r',  (t.r * 2.7 * (1 + .04*Math.sin(S.t*1.5))).toFixed(1));
   const boost = 1 + h.flare * 1.15;                 // you touched the wrong thing: say it louder
-  dim.setAttribute('opacity', Math.min(.74, h.k * (.34 + .16*breathe) * boost).toFixed(3));
+  const dk = t.dim || .34;
+  dim.setAttribute('opacity', Math.min(.74, h.k * (dk + dk*.47*breathe) * boost).toFixed(3));
 
   // and a little warmth underneath, for the steps where the target is bare road
   const a = Math.min(1, h.k * breathe * clamp(.4 + (1-d)*.8, .4, 1) * .85 * (t.glow || 1) * boost);
@@ -474,7 +489,7 @@ function reject(){
   h.flare = 1;
   S.idle = HINT_WAIT + 1;            // show it now rather than after the usual pause
   h.k = Math.max(h.k, .55);
-  if(STEPS[h.step] === 'carry' && h.spot){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }
+  if(STEPS[h.step] === 'carry' && h.spot){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }   // one ripple, only when you ask
 }
 
 // ---- behaviour -------------------------------------------------------------
@@ -528,7 +543,8 @@ function think(dt){
   if(CFG.scene.rain > 0) for(const r of RAIN){
     r.y += r.v*dt; r.x -= r.v*dt*0.11;
     if(r.y > FLOOR){
-      if(SPLASH.length < 26 && Math.abs(r.x - LAMP.head) < 190)
+      // they land where it is still raining — so a ring of them gathers at the edge of the light
+      if(SPLASH.length < 26 && dryness(r.x, FLOOR - 20) < .5 && Math.abs(r.x - LAMP.head) < 300)
         SPLASH.push({ x: r.x, y: rnd(KERB+30, FLOOR-6), a: 0 });
       r.y = rnd(240, 330); r.x = rnd(0, W + 60);
     }
@@ -621,8 +637,8 @@ layout();
 requestAnimationFrame(frame);
 
 window.CAT  = () => S;
-window.CATP = { CFG, applyColors, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
-                reset(){ Object.assign(S.cat, { x: Math.round(W*0.42), y: 648, wake: 0, puff: 0, stretch: 0, face: -1 });
+window.CATP = { CFG, applyColors, dry: dryness, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
+                reset(){ Object.assign(S.cat, { x: Math.round(PEN.x0 + 42), y: 648, wake: 0, puff: 0, stretch: 0, face: 1 });
                          S.fish.out = false; S.fish.left = 1; S.fishEaten = false; S.mode = 'rest';
                          S.idle = 999; S.target = null; S.held = S.carrying = false;
                          S.hint = { step: 0, k: 0, spot: null, sawCarry: false, ping: 0, flare: 0 }; } };
