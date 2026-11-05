@@ -414,7 +414,7 @@ const HINT_WAIT = 2.6;          // seconds of nobody doing anything before the s
 function hintTarget(){
   const c = S.cat, f = S.fish;
   switch(STEPS[S.hint.step]){
-    case 'wake':  return { x: c.x, y: c.y + 20, r: 94, glow: .75, dim: .50 };
+    case 'wake':  return { x: c.x, y: c.y + 28, r: 172, glow: 1, dim: .66, moon: true };
     case 'carry': return S.hint.spot;           // the dry ground under the lamp
     case 'feed':  return { x: f.out ? f.x : TRAY.x, y: (f.out ? f.y : TRAY.y) + 8, r: 60, glow: 1, dim: .22 };
     default:      return null;
@@ -480,9 +480,15 @@ function drawHint(d){
   // and a little warmth underneath, for the steps where the target is bare road
   const a = Math.min(1, h.k * breathe * clamp(.4 + (1-d)*.8, .4, 1) * .85 * (t.glow || 1) * boost);
   const r = t.r * (1 + .06*Math.sin(S.t*1.5));
+  // a black cat gains nothing from the street going dark — she needs the ground under her lit.
+  // the moon is already up there, so the pale pool has somewhere to have come from
+  const paint = t.moon ? 'moonPool' : 'pool';
   g.innerHTML = `<ellipse cx="${t.x.toFixed(1)}" cy="${t.y.toFixed(1)}" `
-              + `rx="${r.toFixed(1)}" ry="${(r*0.42).toFixed(1)}" `
-              + `fill="url(#pool)" opacity="${a.toFixed(3)}"/>`;
+              + `rx="${r.toFixed(1)}" ry="${(r*0.46).toFixed(1)}" `
+              + `fill="url(#${paint})" opacity="${a.toFixed(3)}"/>`
+              + (t.moon ? `<ellipse cx="${t.x.toFixed(1)}" cy="${t.y.toFixed(1)}" `
+                        + `rx="${(r*.52).toFixed(1)}" ry="${(r*.24).toFixed(1)}" `
+                        + `fill="url(#moonPool)" opacity="${(a*.8).toFixed(3)}"/>` : '');
 }
 
 // only the step's own input answers; everything else makes the suggestion flare
