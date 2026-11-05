@@ -5,7 +5,7 @@ three Week 4 interaction studies in `studies/`. Keep the study folders unchanged
 submitted separately and are deliberately grayscale.
 
 The final prototype is **one continuous scene** that runs a fixed sequence: she is asleep,
-you wake her, you carry her somewhere, you feed her, she lies back down and it is over.
+you wake her, you send her out of the rain, you feed her, she lies back down and it is over.
 At each step only that step's own interaction answers; the others are inert until their turn.
 There are still no screens to flip between, no step tracker, no progress indicator, no check
 marks and no success or failure — being "behind" is not a state the piece can be in, and a
@@ -20,8 +20,10 @@ too faint to act on is a defect, not restraint.
 
 It rains everywhere except inside the lamp's cone, and that one dry, warm patch is what the
 whole piece turns on: she starts asleep out in the rain, shivers once she is awake and leans
-toward the light, and the carrying step only completes when she is actually under the lamp —
-setting her down still in the wet achieves nothing. Walking to a clicked spot still exists in
+toward the light, and the second step completes only when she is actually under the lamp. You
+click where she should go and she walks there herself — clicking is something nobody has to be
+taught, which dragging is not — so sending her to the wrong place is allowed and simply leaves
+her in the wet. The fish sits under the lamp too, so feeding her never walks her back out. Walking to a clicked spot still exists in
 the code but no step accepts it, so it never runs. The sequence
 owns her sleep — `CFG.motion.sleepAfter` no longer puts her under mid-sequence, and once she
 has eaten she settles for good. A touch after that starts the whole thing over. Nothing drawn on the cat glows — she is a flat silhouette, and all the light

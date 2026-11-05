@@ -55,7 +55,7 @@ const SPLASH = [], PING = [];
 function buildWorld(){
   LAMP = { post: Math.round(W*0.78), head: Math.round(W*0.78) - 34, top: 292, base: 476 };
   PEN  = { x0: 54, x1: W - 54, y0: 520, y1: 778 };
-  TRAY = { x: W - 122, y: 736 };   // far enough in that she is never cut off while she eats
+  TRAY = { x: Math.round(clamp(LAMP.head + 76, 60, W - 60)), y: 736 };   // under the lamp, so she eats in the dry
 
   STARS = [];
   for(let i=0;i<Math.round(W/11);i++) STARS.push({ x: rnd(6,W-6), y: rnd(26,430), r: rnd(.6,1.7), p: rnd(0,7) });
@@ -408,14 +408,14 @@ function drawFish(){
 // One thing at a time. The street lights what to touch next and she looks at it, and
 // only that one thing answers — touch anything else and the suggestion flares instead.
 // wake -> carry -> feed -> done, and at done she lies back down and it is over.
-const STEPS = ['wake', 'carry', 'feed', 'done'];
+const STEPS = ['wake', 'walk', 'feed', 'done'];
 const HINT_WAIT = 2.6;          // seconds of nobody doing anything before the street says anything
 
 function hintTarget(){
   const c = S.cat, f = S.fish;
   switch(STEPS[S.hint.step]){
     case 'wake':  return { x: c.x, y: c.y + 28, r: 172, glow: 1, dim: .66, moon: true };
-    case 'carry': return S.hint.spot;           // the dry ground under the lamp
+    case 'walk':  return S.hint.spot;           // the dry ground under the lamp
     case 'feed':  return { x: f.out ? f.x : TRAY.x, y: (f.out ? f.y : TRAY.y) + 8, r: 60, glow: 1, dim: .22 };
     default:      return null;
   }
@@ -431,15 +431,14 @@ function hintThink(dt){
 
   // read what she is already doing — the input handlers are not touched
   if(step === 'wake' && S.cat.puff > .5) advance();
-  else if(step === 'carry'){
-    if(S.carrying) h.sawCarry = true;
-    // set her down still in the rain and nothing has been achieved; she keeps shivering
-    if(h.sawCarry && !S.held && sheltered(S.cat.x, S.cat.y)) advance();
+  else if(step === 'walk'){
+    // send her anywhere you like; the step is done when she is actually out of the rain
+    if(S.mode === 'rest' && !S.held && sheltered(S.cat.x, S.cat.y)) advance();
   }
   else if(step === 'feed' && S.fishEaten) advance();
 
   // there is only one dry place on this street and the lamp already made it
-  if(STEPS[h.step] === 'carry' && !h.spot){
+  if(STEPS[h.step] === 'walk' && !h.spot){
     // left of the lamp's centre, so she does not land on top of the fish tray
     h.spot = { x: clamp(LAMP.head - 72, PEN.x0 + 46, PEN.x1 - 46),
                y: clamp(686, PEN.y0, PEN.y1), r: 96, glow: .35, dim: .20 };
@@ -451,6 +450,13 @@ function hintThink(dt){
                   && S.mode !== 'walk' && S.mode !== 'run' && S.mode !== 'eat';
   const want = (STEPS[h.step] === 'done' || !settled) ? 0 : 1;
   h.k += (want - h.k) * Math.min(1, dt*2.2);
+
+  // now that the step is a click, the street can say "here" in its own words: the very ring
+  // that appears wherever you send her
+  if(STEPS[h.step] === 'walk' && h.k > .5 && h.spot){
+    h.ping += dt;
+    if(h.ping > 2.2){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }
+  }
 
   // she looks at whatever the street is pointing out
   const t = hintTarget();
@@ -495,7 +501,7 @@ function drawHint(d){
 function allows(what){
   switch(STEPS[S.hint.step]){
     case 'wake':  return what === 'cat';                        // she is asleep: wake her
-    case 'carry': return what === 'cat' || what === 'drag';     // you have to hold her to move her
+    case 'walk':  return what === 'street';                     // click where she should go
     case 'feed':  return what === 'fish';
     default:      return false;                                 // done
   }
@@ -506,7 +512,7 @@ function reject(){
   h.flare = 1;
   S.idle = HINT_WAIT + 1;            // show it now rather than after the usual pause
   h.k = Math.max(h.k, .55);
-  if(STEPS[h.step] === 'carry' && h.spot){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }   // one ripple, only when you ask
+  if(STEPS[h.step] === 'walk' && h.spot){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }   // one ripple, only when you ask
 }
 
 // ---- behaviour -------------------------------------------------------------
@@ -587,8 +593,9 @@ svg.addEventListener('pointerdown', e => {
     if(!allows('fish')) return reject();
     noticed();
     S.fish.held = true; S.fish.out = true; S.fish.left = 1;
-    // a plain click drops it on the street beside the tray, so she never eats on top of the ring
-    S.fish.x = S.fish.out && p.x === S.fish.x ? p.x : clamp(TRAY.x - 110, 60, W-60);
+    // a plain click drops it just beside the tray — far enough off the ring, near enough
+    // that fetching it does not walk her back out into the rain
+    S.fish.x = S.fish.out && p.x === S.fish.x ? p.x : clamp(TRAY.x - 46, 60, W-60);
     S.fish.y = clamp(TRAY.y + 26, PEN.y0, PEN.y1);
     svg.setPointerCapture(e.pointerId); return; }
   if(onCat(p)){
@@ -654,7 +661,7 @@ layout();
 requestAnimationFrame(frame);
 
 window.CAT  = () => S;
-window.CATP = { CFG, applyColors, dry: dryness, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
+window.CATP = { CFG, applyColors, dry: dryness, tray: () => TRAY, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
                 reset(){ const sp = startSpot();
                          Object.assign(S.cat, { x: sp.x, y: sp.y, wake: 0, puff: 0, stretch: 0, face: 1 });
                          S.touched = false; $('titleG').classList.remove('gone');
