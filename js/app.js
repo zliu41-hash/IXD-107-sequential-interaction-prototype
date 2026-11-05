@@ -36,6 +36,15 @@ function dryness(x, y){
   return clamp(1 - (Math.abs(x - LAMP.head) - (half - 52)) / 52, 0, 1);
 }
 const sheltered = (x, y) => dryness(x, y) > .55;
+
+// her starting place is read off the lamp, not written down — on a wide screen a fixed x
+// puts her against the frame edge, far from the one thing she is supposed to be compared with
+function startSpot(){
+  const y = 648;
+  const t = clamp((y - CONE_TOP) / (FLOOR - CONE_TOP), 0, 1);
+  const half = 16 + t*(CONE_SPREAD - 16);
+  return { x: Math.round(clamp(LAMP.head - half - 150, PEN.x0 + 30, PEN.x1 - 30)), y };
+}
 let W = 390;                                   // design width; height is always 844
 let LAMP = { post: 300, head: 266, top: 292, base: 476 };
 let PEN  = { x0: 50, x1: 340, y0: 520, y1: 772 };
@@ -76,6 +85,8 @@ function layout(){
   svg.setAttribute('viewBox', `0 0 ${W} ${FLOOR}`);
   $('roadClipRect').setAttribute('width', W);
   buildWorld();
+  // until someone touches her she belongs beside the shelter, wherever the lamp ended up
+  if(!S.touched){ const sp = startSpot(); S.cat.x = sp.x; S.cat.y = sp.y; }
   S.cat.x = clamp(S.cat.x, PEN.x0, PEN.x1);
   S.fish.x = clamp(S.fish.x, 30, W-30);
   cache.key = {};                                // force every cached layer to redraw
@@ -403,7 +414,7 @@ const HINT_WAIT = 2.6;          // seconds of nobody doing anything before the s
 function hintTarget(){
   const c = S.cat, f = S.fish;
   switch(STEPS[S.hint.step]){
-    case 'wake':  return { x: c.x, y: c.y + 20, r: 94, glow: .75, dim: .34 };
+    case 'wake':  return { x: c.x, y: c.y + 20, r: 94, glow: .75, dim: .50 };
     case 'carry': return S.hint.spot;           // the dry ground under the lamp
     case 'feed':  return { x: f.out ? f.x : TRAY.x, y: (f.out ? f.y : TRAY.y) + 8, r: 60, glow: 1, dim: .22 };
     default:      return null;
@@ -638,7 +649,9 @@ requestAnimationFrame(frame);
 
 window.CAT  = () => S;
 window.CATP = { CFG, applyColors, dry: dryness, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
-                reset(){ Object.assign(S.cat, { x: Math.round(PEN.x0 + 42), y: 648, wake: 0, puff: 0, stretch: 0, face: 1 });
+                reset(){ const sp = startSpot();
+                         Object.assign(S.cat, { x: sp.x, y: sp.y, wake: 0, puff: 0, stretch: 0, face: 1 });
+                         S.touched = false; $('titleG').classList.remove('gone');
                          S.fish.out = false; S.fish.left = 1; S.fishEaten = false; S.mode = 'rest';
                          S.idle = 999; S.target = null; S.held = S.carrying = false;
                          S.hint = { step: 0, k: 0, spot: null, sawCarry: false, ping: 0, flare: 0 }; } };
