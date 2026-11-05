@@ -4,19 +4,24 @@ This repository holds a static GitHub Pages prototype (`index.html` at the root)
 three Week 4 interaction studies in `studies/`. Keep the study folders unchanged — they are
 submitted separately and are deliberately grayscale.
 
-The final prototype is **one continuous scene**. There are no screens to flip between, no
-step tracker, no success or failure states, and nothing that ends. If a change would add a
-sequence of pages, a progress indicator, or a check mark, it is the wrong change.
+The final prototype is **one continuous scene** that runs a fixed sequence: she is asleep,
+you wake her, you carry her somewhere, you feed her, she lies back down and it is over.
+At each step only that step's own interaction answers; the others are inert until their turn.
+There are still no screens to flip between, no step tracker, no progress indicator, no check
+marks and no success or failure — being "behind" is not a state the piece can be in, and a
+touch at the wrong moment is never an error. It only makes the current suggestion flare.
 
-The scene may *suggest* an order. A lit patch of road under the next thing worth touching,
-and her looking at it, are allowed and are the only way the piece guides anyone — there are
-no words, arrows or buttons. A suggestion never locks anything: every interaction stays
-available at all times, ignoring a suggestion costs nothing, and being "behind" is not a
-state the piece can be in.
+The subject of the piece is being led. A lit patch of road under the next thing worth
+touching, the street quieting everywhere else, a ripple on bare road and her turning to look
+are the whole vocabulary — there are no words, arrows or buttons, and that restriction is the
+point, not an obstacle to work around. The measure of the piece is whether someone who has
+never seen it gets from start to finish without being told anything, so a suggestion that is
+too faint to act on is a defect, not restraint.
 
-She starts asleep, wakes when clicked, walks to wherever the street is clicked, runs to the
-fish when the fish is clicked, and goes back to sleep `CFG.motion.sleepAfter` seconds after the
-last interaction. Nothing drawn on the cat glows — she is a flat silhouette, and all the light
+She starts asleep and wakes when clicked; then she can be carried, and then fed. Walking to a
+clicked spot still exists in the code but no step accepts it, so it never runs. The sequence
+owns her sleep — `CFG.motion.sleepAfter` no longer puts her under mid-sequence, and once she
+has eaten she settles for good. A touch after that starts the whole thing over. Nothing drawn on the cat glows — she is a flat silhouette, and all the light
 in the frame belongs to the lamps, the puddles and the rain.
 
 Saved defaults live in `js/config.js`; the "Street tuning" panel (`js/panel.js`) edits a live

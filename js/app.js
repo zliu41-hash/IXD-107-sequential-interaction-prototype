@@ -81,7 +81,7 @@ const S = {
   mode: 'rest', target: null, eat: 0, idle: 999, win: 0,   // idle starts high: she begins asleep
   fishEaten: false,                                        // once she has had it, there is no more fish
   drowsy: 1, touched: false, flick: 1,
-  hint: { step: 0, k: 0, spot: null, sawCarry: false, ping: 0 }   // the street's suggestion, nothing more
+  hint: { step: 0, k: 0, spot: null, sawCarry: false, ping: 0, flare: 0 }   // the street's suggestion, nothing more
 };
 const cache = { key: {}, html: {} };
 const once = (slot, key, make) => { if(cache.key[slot] !== key){ cache.key[slot] = key; $(slot).innerHTML = make(); } };
@@ -376,9 +376,9 @@ function drawFish(){
 }
 
 // ---- the nudge -------------------------------------------------------------
-// She still accepts everything at once, exactly as before. This only suggests an
-// order: the street lights the one thing worth touching next, and she looks at it.
-// Ignore the suggestion and nothing breaks — it simply waits where it is.
+// One thing at a time. The street lights what to touch next and she looks at it, and
+// only that one thing answers — touch anything else and the suggestion flares instead.
+// wake -> carry -> feed -> done, and at done she lies back down and it is over.
 const STEPS = ['wake', 'carry', 'feed', 'done'];
 const HINT_WAIT = 2.6;          // seconds of nobody doing anything before the street says anything
 
@@ -396,15 +396,15 @@ function hintThink(dt){
   const h = S.hint, step = STEPS[h.step];
 
   const advance = () => { h.step = Math.min(h.step + 1, STEPS.length - 1);
-                          h.k = 0; h.spot = null; h.sawCarry = false; h.ping = 0; };
+                          h.k = 0; h.spot = null; h.sawCarry = false; h.ping = 0; h.flare = 0; };
+
+  h.flare = Math.max(0, h.flare - dt*1.5);
 
   // read what she is already doing — the input handlers are not touched
   if(step === 'wake' && S.cat.puff > .5) advance();
   else if(step === 'carry'){
     if(S.carrying) h.sawCarry = true;
     if(h.sawCarry && !S.held) advance();
-    else if(h.spot && S.mode === 'rest' && !S.held
-            && Math.hypot(S.cat.x - h.spot.x, S.cat.y - h.spot.y) < 56) advance();   // walked there instead: fine
   }
   else if(step === 'feed' && S.fishEaten) advance();
 
@@ -448,14 +448,33 @@ function drawHint(d){
   grad.setAttribute('cx', t.x.toFixed(1));
   grad.setAttribute('cy', t.y.toFixed(1));
   grad.setAttribute('r',  (t.r * 2.7 * (1 + .04*Math.sin(S.t*1.5))).toFixed(1));
-  dim.setAttribute('opacity', (h.k * (.34 + .16*breathe)).toFixed(3));
+  const boost = 1 + h.flare * 1.15;                 // you touched the wrong thing: say it louder
+  dim.setAttribute('opacity', Math.min(.74, h.k * (.34 + .16*breathe) * boost).toFixed(3));
 
   // and a little warmth underneath, for the steps where the target is bare road
-  const a = h.k * breathe * clamp(.4 + (1-d)*.8, .4, 1) * .85 * (t.glow || 1);
+  const a = Math.min(1, h.k * breathe * clamp(.4 + (1-d)*.8, .4, 1) * .85 * (t.glow || 1) * boost);
   const r = t.r * (1 + .06*Math.sin(S.t*1.5));
   g.innerHTML = `<ellipse cx="${t.x.toFixed(1)}" cy="${t.y.toFixed(1)}" `
               + `rx="${r.toFixed(1)}" ry="${(r*0.42).toFixed(1)}" `
               + `fill="url(#pool)" opacity="${a.toFixed(3)}"/>`;
+}
+
+// only the step's own input answers; everything else makes the suggestion flare
+function allows(what){
+  switch(STEPS[S.hint.step]){
+    case 'wake':  return what === 'cat';                        // she is asleep: wake her
+    case 'carry': return what === 'cat' || what === 'drag';     // you have to hold her to move her
+    case 'feed':  return what === 'fish';
+    default:      return false;                                 // done
+  }
+}
+
+function reject(){
+  const h = S.hint;
+  h.flare = 1;
+  S.idle = HINT_WAIT + 1;            // show it now rather than after the usual pause
+  h.k = Math.max(h.k, .55);
+  if(STEPS[h.step] === 'carry' && h.spot){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }
 }
 
 // ---- behaviour -------------------------------------------------------------
@@ -489,7 +508,9 @@ function think(dt){
 
   // she is awake while something is happening, and for CFG.motion.sleepAfter seconds after it
   const busy  = S.held || S.mode === 'walk' || S.mode === 'run' || S.mode === 'eat' || c.puff > .3;
-  const awake = busy || S.idle < M.sleepAfter;
+  // the sequence owns her sleep: down before it starts, up while it runs, down again at the end
+  const seq   = STEPS[S.hint.step];
+  const awake = (seq === 'wake' || seq === 'done') ? busy : true;
   c.wake = awake ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
 
   if(!S.held) c.puff = clamp(c.puff - dt*2.4, 0, 1);
@@ -524,14 +545,22 @@ const hideTitle = () => { if(!S.touched){ S.touched = true; $('titleG').classLis
 const noticed = () => { S.idle = 0; };      // anything you do buys her another ten seconds
 
 svg.addEventListener('pointerdown', e => {
-  const p = toSvg(e); hideTitle(); noticed();
+  const p = toSvg(e); hideTitle();
+
+  // it is over: once she has settled again, a touch anywhere starts the whole thing afresh
+  if(STEPS[S.hint.step] === 'done'){ if(S.cat.wake < .05) window.CATP.reset(); return; }
+
   if(onFish(p)){
+    if(!allows('fish')) return reject();
+    noticed();
     S.fish.held = true; S.fish.out = true; S.fish.left = 1;
     // a plain click drops it on the street beside the tray, so she never eats on top of the ring
     S.fish.x = S.fish.out && p.x === S.fish.x ? p.x : clamp(TRAY.x - 110, 60, W-60);
     S.fish.y = clamp(TRAY.y + 26, PEN.y0, PEN.y1);
     svg.setPointerCapture(e.pointerId); return; }
   if(onCat(p)){
+    if(!allows('cat')) return reject();
+    noticed();
     S.held = true; S.moved = 0; S.carrying = false;
     S.cat.puff = Math.min(1, S.cat.puff + .95);
     S.cat.stretch = 0; S.mode = 'held'; S.target = null;
@@ -539,8 +568,10 @@ svg.addEventListener('pointerdown', e => {
     svg.setPointerCapture(e.pointerId);
     return;
   }
-  // anywhere else on the street: she goes there
+  // anywhere else on the street: not part of the sequence, so the street just insists
   if(p.y > KERB + 20){
+    if(!allows('street')) return reject();
+    noticed();
     S.mode = 'walk';
     S.target = { x: clamp(p.x, PEN.x0, PEN.x1), y: clamp(p.y, PEN.y0, PEN.y1) };
     PING.push({ x: S.target.x, y: S.target.y, a: 0 });
@@ -594,5 +625,5 @@ window.CATP = { CFG, applyColors, relayout: layout, setDay: v => { S.day = v; S.
                 reset(){ Object.assign(S.cat, { x: Math.round(W*0.42), y: 648, wake: 0, puff: 0, stretch: 0, face: -1 });
                          S.fish.out = false; S.fish.left = 1; S.fishEaten = false; S.mode = 'rest';
                          S.idle = 999; S.target = null; S.held = S.carrying = false;
-                         S.hint = { step: 0, k: 0, spot: null, sawCarry: false, ping: 0 }; } };
+                         S.hint = { step: 0, k: 0, spot: null, sawCarry: false, ping: 0, flare: 0 }; } };
 })();
