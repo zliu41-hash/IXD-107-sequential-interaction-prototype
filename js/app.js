@@ -36,6 +36,8 @@ function dryness(x, y){
   return clamp(1 - (Math.abs(x - LAMP.head) - (half - 52)) / 52, 0, 1);
 }
 const sheltered = (x, y) => dryness(x, y) > .55;
+// she is scaled up on wider screens; anything measured against her body has to follow
+const catScale = () => CFG.cat.size * clamp(1 + (W/390 - 1)*0.17, 1, 1.75);
 
 // her starting place is read off the lamp, not written down — on a wide screen a fixed x
 // puts her against the frame edge, far from the one thing she is supposed to be compared with
@@ -271,7 +273,7 @@ function bristles(x, y, k){
 
 function drawCat(d){
   const c = S.cat, k = c.puff, w = c.wake;
-  const sz = CFG.cat.size * clamp(1 + (W/390 - 1)*0.17, 1, 1.75);
+  const sz = catScale();
   const night = 1 - d;
 
   // she is drawn facing left, so travelling right mirrors her — otherwise she walks backwards
@@ -525,14 +527,19 @@ function think(dt){
   else if(S.fish.out && !S.fish.held && S.fish.left > .02 && S.mode !== 'eat'){
     // she comes right up to it, close enough that lowering her head reaches it
     const side = S.fish.x > W*0.5 ? -1 : 1;
-    S.mode = 'run'; S.target = { x: clamp(S.fish.x + side*82, PEN.x0, PEN.x1),
+    // stand off by her own head-length, or she ends up lying on top of the fish
+    S.mode = 'run'; S.target = { x: clamp(S.fish.x + side*64*catScale(), PEN.x0, PEN.x1),
                                  y: clamp(S.fish.y, PEN.y0, PEN.y1) };
   }
 
   if((S.mode === 'walk' || S.mode === 'run') && S.target){
     const dx = S.target.x - c.x, dy = S.target.y - c.y, dd = Math.hypot(dx, dy);
-    if(dd > 4) c.face = dx < 0 ? -1 : 1;
+    // going for the fish she keeps her eyes on it — the approach can step her backwards
+    // past it, and facing the way her feet happen to be moving turns her away from her food
+    if(S.mode === 'run' && S.fish.out) c.face = S.fish.x < c.x ? -1 : 1;
+    else if(dd > 4) c.face = dx < 0 ? -1 : 1;
     if(dd < 6){ S.mode = (S.fish.out && S.fish.left > .02) ? 'eat' : 'rest';
+                if(S.mode === 'eat') c.face = S.fish.x < c.x ? -1 : 1;
                 S.eat = CFG.cat.appetite; S.target = null; if(S.mode === 'rest') c.stretch = 1; }
     else { const v = (S.mode === 'run' ? M.runSpeed : M.walkSpeed)*dt; c.x += dx/dd*v; c.y += dy/dd*v; }
   }
