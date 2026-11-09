@@ -10,8 +10,10 @@ fur down five times, you take the sun out of the sky, and you carry her back to 
 step only that step's own object answers; the others are inert until their turn. A touch at
 the wrong moment is never an error — it only makes the current suggestion flare.
 
-The subject of the piece is being led. There are no words, arrows or buttons, and that
-restriction is the point, not an obstacle to work around. The measure of the piece is whether
+The subject of the piece is being led. There are no words and no buttons, and that
+restriction is the point, not an obstacle to work around. There is **exactly one arrow**,
+in the fourth step, and the reasoning for it is under "The sun step" below — it is an
+exception that was argued for and taken, not a loophole. Do not add a second one. The measure of the piece is whether
 someone who has never seen it gets from start to finish without being told anything, so a
 suggestion that is too faint to act on is a defect, not restraint.
 
@@ -50,12 +52,18 @@ exact opposite of what the grooming step asks for, and first-time viewers read i
 warning. She now shakes herself after her meal and ends up with five cowlicks on her head;
 each stroke lays one flat. Do not go back to spikes.
 
-**The sun step needs a reason, not a brighter ring.** Nobody has seen a sun that can be
-dragged, so three things answer three different questions: she yawns and tips her head back
-to watch the sky (why), the sun starts sinking towards the notch on its own (that it moves,
-and where to), and the sky goes gold over the notch (that a sunset belongs there). A faint
-dotted arc appears between sun and notch while it is held — the only path in the piece,
-because this is the only step where the distance is large. Dragging was chosen over clicking
+**The sun step.** Nobody has seen a sun that can be dragged, and no amount of glow says
+"downwards", so this step carries a **dotted orange arrow** from the sun to the notch for as
+long as its suggestion is up. This is the one arrow in the piece and it breaks the rule
+above on purpose: being unreadable is a worse failure than being less pure. It is warm
+orange rather than the usual cream because cream on pale blue sky has almost no contrast,
+and because it has to carry a direction rather than mark a spot. The sun also sinks towards
+the notch on its own, and the sky goes gold over the notch, so the step still says something
+before the arrow is read.
+
+An earlier version had her tip her head back and watch the sky instead. At the sizes the
+piece actually runs at, the tilt was a few pixels and nobody saw it; it was removed rather
+than enlarged. Dragging was chosen over clicking
 knowingly: clicking needs no teaching and dragging does, so **if a first-time tester stalls
 on step one, the fix is to go back to click-to-walk**, which is still what `think()` does for
 the walk/run modes.

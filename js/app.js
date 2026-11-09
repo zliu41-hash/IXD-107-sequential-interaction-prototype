@@ -438,10 +438,6 @@ function drawCat(){
       <path d="M${x-48} ${y+14} q-6 ${(-32-arch).toFixed(1)} 26 -38 q34 -6 48 14 q15 21 -6 28 q-34 10 -68 -4 Z" fill="var(--cat)"/>`;
   }
 
-  // in the fourth step she tips her head back and looks at the sky: a cat staring upward
-  // is the reason the sun is worth touching, and no ring can say that
-  const up = STEPS[S.hint.step] === 'dusk' && !carried && S.mode === 'rest' ? 1 : 0;
-  hy -= up*5;
   const hr = (walking || sitting) ? 19 : (eating ? 17 : 18);
   const blink = Math.sin(S.t*0.83) > .988 || Math.sin(S.t*1.41 + 2) > .991;
   const open = (walking || sitting || eating || w > .3 || k > .25) && !(blink && k < .3);
@@ -449,7 +445,7 @@ function drawCat(){
   const two = walking || sitting;
   // while she is being stroked she shuts her eyes and enjoys it
   const bliss = c.purr > .25;
-  const ey = hy - 2 - up*4;
+  const ey = hy - 2;
   const eye = (open && !bliss)
     ? `<circle cx="${hx-8}" cy="${ey}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${ey}" r="2.4" fill="${eyeCol}"/>`:''}`
     : `<path d="M${hx-13} ${hy-1} q5 ${bliss?-4:4} 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>${
@@ -595,12 +591,30 @@ function drawHint(){
   if(t.grab && !dragging) s += pool(t.grab, 1.0);
   if(S.cue.fish > .02 && !S.fish.inDish)    // you tapped the dish: the fish is over there
     s += pool({ x: S.fish.x, y: S.fish.y + 10, r: 72*k }, S.cue.fish * 1.3);
-  // the one path in the piece: the sun is a long way from where it has to go
-  if(dragging && S.drag.what === 'sun'){
-    const mx = (S.sun.x + SLOT.x)/2, my = Math.min(S.sun.y, SLOT.y) + Math.abs(SLOT.y - S.sun.y)*0.18;
-    s += `<path d="M${S.sun.x.toFixed(1)} ${S.sun.y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${SLOT.x} ${SLOT.y}"
-            fill="none" stroke="var(--glow)" stroke-width="2.4" stroke-linecap="round"
-            stroke-dasharray="2 12" stroke-dashoffset="${(-S.t*26).toFixed(1)}" opacity=".62"/>`;
+  // The one arrow in the piece. Everywhere else the light alone carries the instruction,
+  // but nobody has seen a sun that can be dragged, and a ring cannot say "downwards".
+  // This is a deliberate exception to the no-arrows rule, taken because being unreadable
+  // is a worse failure than being less pure.
+  if(STEPS[h.step] === 'dusk' && h.k > .02){
+    const sr = 42*k;
+    const ax = S.sun.x, ay = S.sun.y + sr*1.22;
+    const bx = SLOT.x,  by = SLOT.y - 30*k;
+    const mx = (ax+bx)/2 + (bx-ax)*0.10, my = (ay+by)/2 - Math.abs(bx-ax)*0.06;
+    const ang = (Math.atan2(by - my, bx - mx) * 180/Math.PI).toFixed(1);
+    // cream on pale blue is low contrast, so this one keeps a steadier, warmer presence
+    // than the pools do — it has to carry a direction, not just mark a spot
+    const a = clamp(h.k * (dragging ? 1 : .80 + .20*Math.sin(S.t*1.9)) * boost, 0, 1);
+    const d = `M${ax.toFixed(1)} ${ay.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}`;
+    const head = `M0 0 L${(-16*k).toFixed(1)} ${(-8.5*k).toFixed(1)} L${(-12*k).toFixed(1)} 0 L${(-16*k).toFixed(1)} ${(8.5*k).toFixed(1)} Z`;
+    s += `<g opacity="${a.toFixed(3)}">
+        <path d="${d}" fill="none" stroke="#C2731E" stroke-width="${(9*k).toFixed(1)}"
+              stroke-linecap="round" opacity=".30" filter="url(#soft)"/>
+        <path d="${d}" fill="none" stroke="#FFB250" stroke-width="${(4.6*k).toFixed(1)}"
+              stroke-linecap="round" stroke-dasharray="${(4.4*k).toFixed(1)} ${(10*k).toFixed(1)}"
+              stroke-dashoffset="${(-S.t*38).toFixed(1)}"/>
+        <path d="${head}" transform="translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${ang}) scale(1.25)"
+              fill="#FFB250"/>
+      </g>`;
   }
   $('hintG').innerHTML = s;
 
@@ -700,8 +714,6 @@ function think(dt){
   c.yawn  = Math.max(0, c.yawn  - dt*0.7);
   S.cue.fish = Math.max(0, S.cue.fish - dt*0.5);
   S.cue.dish = (S.drag && S.drag.what === 'fish') ? 1 : Math.max(0, S.cue.dish - dt*0.5);
-  // in the fourth step she watches the sky, so she faces whichever way the sun is
-  if(step === 'dusk' && S.mode === 'rest' && !dragging) c.face = S.sun.x < c.x ? -1 : 1;
 
   c.purr = Math.max(0, c.purr - dt*1.9);
   if(c.stretch > 0 && !dragging) c.stretch = Math.max(0, c.stretch - dt*2.4);
