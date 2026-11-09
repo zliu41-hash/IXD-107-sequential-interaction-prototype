@@ -23,6 +23,65 @@ const mix = (a,b,k) => { const A=hex(a), B=hex(b); return rgb([0,1,2].map(i=>ler
 const hx2 = v => Math.round(clamp(v,0,255)).toString(16).padStart(2,'0');
 const dark = (c,k) => { const A=hex(c); return '#' + A.map(v=>hx2(v*(1-k))).join(''); };
 
+// ---- sound -----------------------------------------------------------------
+// Synthesised on the spot, so the page stays one folder with no audio files to fetch.
+// Sound only ever confirms what the picture has already said: a muted laptop — which is
+// what a classroom demo usually is — must lose nothing it needs to get through the piece.
+let AC = null, BUS = null, MUTE = false;
+function audioOn(){
+  if(AC) { if(AC.state === 'suspended') AC.resume(); return; }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    BUS = AC.createGain(); BUS.gain.value = 0.2; BUS.connect(AC.destination);
+  } catch(e){ AC = null; }
+}
+function blip(f, f2, dur, type, vol, when, q){
+  if(!AC) return;
+  const t0 = AC.currentTime + (when || 0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f, t0);
+  if(f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t0 + Math.min(.03, dur*.3));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  let node = o;
+  if(q){ const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = q;
+         o.connect(lp); node = lp; }
+  node.connect(g); g.connect(BUS);
+  o.start(t0); o.stop(t0 + dur + .02);
+}
+function hiss(dur, vol, cut, when){
+  if(!AC) return;
+  const t0 = AC.currentTime + (when || 0), n = Math.floor(AC.sampleRate * dur);
+  const buf = AC.createBuffer(1, n, AC.sampleRate), d = buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = (Math.random()*2 - 1) * (1 - i/n);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cut;
+  const g = AC.createGain(); g.gain.value = vol;
+  src.connect(lp); lp.connect(g); g.connect(BUS); src.start(t0);
+}
+function sfx(name){
+  if(!AC || MUTE) return;
+  switch(name){
+    case 'hint':  blip(1046, 1318, .5, 'sine', .07, 0); blip(1568, 1568, .5, 'sine', .035, .09); break;
+    case 'pick':  blip(620, 760, .09, 'triangle', .09); break;
+    case 'place': blip(523, 523, .13, 'sine', .11); blip(784, 784, .26, 'sine', .09, .09); break;
+    case 'purr':  blip(58, 52, .42, 'sawtooth', .20, 0, 220);
+                  blip(87, 78, .42, 'sawtooth', .09, 0, 300);
+                  blip(1318, 1760, .22, 'sine', .035, .04); break;
+    case 'munch': hiss(.08, .22, 900); blip(150, 110, .07, 'triangle', .05); break;
+    case 'shake': hiss(.3, .16, 1800); break;
+    case 'dusk':  blip(196, 98, 1.5, 'sine', .14); blip(294, 147, 1.5, 'sine', .07, .05); break;
+    case 'done':  [523, 659, 784, 1046].forEach((f,i) => blip(f, f, .5, 'sine', .09, i*.13)); break;
+    case 'nudge': blip(150, 120, .14, 'sine', .08, 0, 400); break;
+  }
+}
+addEventListener('keydown', e => {
+  if(e.target.closest && e.target.closest('input, select, textarea')) return;
+  if(e.key === 'm' || e.key === 'M'){ MUTE = !MUTE; if(!MUTE){ audioOn(); sfx('pick'); } }
+});
+
 // ---- the world, sized to whatever window it lands in -----------------------
 const FLOOR = 844, HORIZON = 408;
 let W = 390;
@@ -107,14 +166,17 @@ function layout(){
 // ---- state -----------------------------------------------------------------
 const S = {
   t: 0, night: 0,
-  cat: { x: 100, y: 664, wake: 0, puff: 0, stretch: 0, face: 1, bob: 0, purr: 0 },
+  cat: { x: 100, y: 664, wake: 0, puff: 0, stretch: 0, face: 1, bob: 0, purr: 0, yawn: 0, shake: 0 },
   sun: { x: 270, y: 176, set: false },
   fish: { x: 190, y: 790, inDish: false, left: 1 },
   drag: null,                       // { what:'cat'|'fish'|'sun', dx, dy, moved }
   mode: 'rest', target: null, eat: 0, idle: 999,
   fishEaten: false, strokes: 0, inBed: true,
+  mess: 0,                          // how untidy she is — the five cowlicks fade in with this
+  cue: { fish: 0, dish: 0 },        // the two ends of the feeding step pointing at each other
+  warm: 0, drift: 0,                // the sky going gold, and how long the sun has been sinking
   touched: false,
-  hint: { step: 0, k: 0, ping: 0, flare: 0 }
+  hint: { step: 0, k: 0, ping: 0, flare: 0, said: -1 }
 };
 const cache = { key: {}, html: {} };
 const once = (slot, key, make) => { if(cache.key[slot] !== key){ cache.key[slot] = key; $(slot).innerHTML = make(); } };
@@ -125,11 +187,20 @@ function drawSky(){
   const n = N(), C = CFG.colors;
   $('skyTop').setAttribute('stop-color', mix(C.skyDayTop, C.skyNightTop, n));
   $('skyMid').setAttribute('stop-color', mix(C.skyDayMid, C.skyNightMid, n));
-  $('skyLow').setAttribute('stop-color', mix(C.skyDayLow, C.skyNightLow, n));
+  $('skyLow').setAttribute('stop-color',
+      mix(mix(C.skyDayLow, '#F7C98E', S.warm*(1-n)), C.skyNightLow, n));
 
   $('stars').innerHTML = n < .12 ? '' : STARS.map(s =>
     `<circle cx="${s.x.toFixed(0)}" cy="${s.y.toFixed(0)}" r="${s.r.toFixed(1)}" fill="#fff"
        opacity="${(n*(.3+Math.abs(Math.sin(S.t*.7+s.p))*.6)).toFixed(2)}"/>`).join('');
+
+  // the gold that gathers over the notch during the fourth step
+  const wk = S.warm * (1 - n*.7);
+  $('warmth').innerHTML = wk < .02 ? '' : `
+    <ellipse cx="${SLOT.x}" cy="${(HORIZON+6).toFixed(0)}" rx="${Math.round(W*0.46)}" ry="86"
+             fill="#FFDCA2" opacity="${(wk*.44).toFixed(2)}" filter="url(#cloudy)"/>
+    <ellipse cx="${SLOT.x}" cy="${(HORIZON+2).toFixed(0)}" rx="${Math.round(W*0.22)}" ry="44"
+             fill="#FFEFC8" opacity="${(wk*.62).toFixed(2)}" filter="url(#cloudy)"/>`;
 
   $('clouds').innerHTML = CLOUD.map(c => {
     const col = mix('#FFFFFF', '#8C93C4', n);
@@ -267,7 +338,15 @@ function drawProps(){
           fill="none" stroke="${weave}" stroke-width="${(1.8*k).toFixed(1)}" opacity=".4" stroke-linecap="round"/>`;
 
   const dr = 30*k, dish = mix(C.dish, dark(C.dish,.56), n);
-  $('dish').innerHTML = `
+  // a dish with a dotted ring round it reads as somewhere things go, before anything is said
+  const cue = S.cue.dish;
+  const ring = S.fishEaten ? '' : `
+    <ellipse cx="${DISH.x}" cy="${(DISH.y+2*k).toFixed(1)}" rx="${(dr*1.62).toFixed(1)}" ry="${(dr*0.62).toFixed(1)}"
+      fill="none" stroke="${cue > .04 ? 'var(--glow)' : mix('#7C9C84','#B9CBE8',n)}"
+      stroke-width="${(1.7 + cue*2.8).toFixed(1)}" stroke-linecap="round"
+      stroke-dasharray="${(5.5*k).toFixed(1)} ${(7*k).toFixed(1)}" stroke-dashoffset="${(-S.t*13).toFixed(1)}"
+      opacity="${(0.40 + cue*0.55).toFixed(2)}"/>`;
+  $('dish').innerHTML = ring + `
     <ellipse cx="${DISH.x}" cy="${(DISH.y+5*k).toFixed(1)}" rx="${(dr*1.05).toFixed(1)}" ry="${(dr*.34).toFixed(1)}" fill="#000" opacity=".10"/>
     <ellipse cx="${DISH.x}" cy="${DISH.y}" rx="${dr.toFixed(1)}" ry="${(dr*.38).toFixed(1)}" fill="${dish}"/>
     <ellipse cx="${DISH.x}" cy="${(DISH.y-1.5*k).toFixed(1)}" rx="${(dr*.72).toFixed(1)}" ry="${(dr*.26).toFixed(1)}"
@@ -275,18 +354,25 @@ function drawProps(){
 }
 
 // ---- the cat ---------------------------------------------------------------
-function bristles(x, y, k){
-  if(k <= .03) return '';
-  // one zigzag along her back rather than a row of separate lines: separate lines
-  // read as a hairbrush standing beside her, a zigzag reads as her own fur lifting
-  const n = 26, pts = [];
-  for(let i=0;i<=n;i++){
-    const a = Math.PI*(1.04 + i/n*0.94);
-    const up = (i % 2) ? (7.5 + Math.sin(i*1.7)*3.2 + Math.sin(i*2.9 + S.t*15)*1.9) * k * CFG.cat.bristle : 0;
-    pts.push(`${(x + 4 + Math.cos(a)*(52+up)).toFixed(1)} ${(y - 2 + Math.sin(a)*(25+up)).toFixed(1)}`);
+// Five cowlicks, one per stroke. She is untidy after her meal, not frightened:
+// raised hackles say "keep away", which is the opposite of what this step asks for.
+// Each stroke lays one of them flat, so the count is visible without a counter.
+function cowlicks(hx, hy, hr){
+  const total = Math.max(1, Math.round(CFG.cat.strokes));
+  let out = '';
+  for(let i=0;i<total;i++){
+    const smoothed = clamp(S.strokes - i, 0, 1);
+    const up = (1 - smoothed) * S.mess;
+    if(up <= .02) continue;
+    const a  = Math.PI*(1.21 + (i + .5)/total * 0.58);
+    const bx = hx + Math.cos(a)*hr*0.86, by = hy + Math.sin(a)*hr*0.86;
+    const sway = Math.sin(S.t*1.7 + i*1.3) * 1.6 * up;
+    const L = (11 + (i % 2)*4.5) * up * CFG.cat.bristle;
+    out += `<path d="M${bx.toFixed(1)} ${by.toFixed(1)}
+              q${(-1+sway).toFixed(1)} ${(-L*.75).toFixed(1)} ${(6.5+sway).toFixed(1)} ${(-L).toFixed(1)}"
+              fill="none" stroke="var(--cat)" stroke-width="${(4.6 - i*.2).toFixed(1)}" stroke-linecap="round"/>`;
   }
-  return `<path d="M${pts.join(' L')}" fill="none" stroke="var(--cat)"
-            stroke-width="${(3.2 + k*1.8).toFixed(1)}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  return out;
 }
 
 function drawCat(){
@@ -295,7 +381,9 @@ function drawCat(){
   const tf = `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) scale(${(-c.face*sz).toFixed(3)} ${sz}) translate(${(-c.x).toFixed(1)} ${(-c.y).toFixed(1)})`;
   // a stroke runs a shiver of pleasure down her: she leans into the hand
   const purr = c.purr * Math.sin(S.t*22) * 1.6;
-  const tfAll = `translate(${purr.toFixed(2)} 0) ${tf}`;
+  // the shake she gives herself after a meal — which is where the untidiness comes from
+  const shk = c.shake > 0 ? Math.sin(S.t*34) * 7 * c.shake : 0;
+  const tfAll = `translate(${purr.toFixed(2)} 0) rotate(${shk.toFixed(2)} ${c.x.toFixed(1)} ${(c.y+20).toFixed(1)}) ${tf}`;
   $('catArt').setAttribute('transform', tfAll);
   $('zzz').setAttribute('transform', `translate(${purr.toFixed(2)} 0)`);
   $('catShadow').setAttribute('transform', tf);
@@ -339,19 +427,21 @@ function drawCat(){
   } else if(sitting){
     const tw = Math.sin(S.t*2.1)*9;
     hx = x - 4; hy = y - 36;
-    body = `${bristles(x,y,k)}
-      <path d="M${x+22} ${y+14} q${(28+tw).toFixed(1)} 7 ${(20+tw*.5).toFixed(1)} -15"
+    body = `      <path d="M${x+22} ${y+14} q${(28+tw).toFixed(1)} 7 ${(20+tw*.5).toFixed(1)} -15"
               fill="none" stroke="var(--cat)" stroke-width="7" stroke-linecap="round"/>
       <path d="M${x-24} ${y+16} q-6 -38 16 -44 q28 -8 36 18 q7 24 -7 26 Z" fill="var(--cat)"/>`;
   } else {
     const tail = Math.sin(S.t*(6+k*9))*(5+k*20);
     hx = x - 17; hy = y - 9 - w*6;
-    body = `${bristles(x,y,k)}
-      <path d="M${x+42} ${y+8} q${(26+tail*.4).toFixed(1)} ${(-6-k*16).toFixed(1)} ${(14+tail*.5).toFixed(1)} ${(-28-k*10).toFixed(1)}"
+    body = `      <path d="M${x+42} ${y+8} q${(26+tail*.4).toFixed(1)} ${(-6-k*16).toFixed(1)} ${(14+tail*.5).toFixed(1)} ${(-28-k*10).toFixed(1)}"
             fill="none" stroke="var(--cat)" stroke-width="${(7+k*3).toFixed(1)}" stroke-linecap="round"/>
       <path d="M${x-48} ${y+14} q-6 ${(-32-arch).toFixed(1)} 26 -38 q34 -6 48 14 q15 21 -6 28 q-34 10 -68 -4 Z" fill="var(--cat)"/>`;
   }
 
+  // in the fourth step she tips her head back and looks at the sky: a cat staring upward
+  // is the reason the sun is worth touching, and no ring can say that
+  const up = STEPS[S.hint.step] === 'dusk' && !carried && S.mode === 'rest' ? 1 : 0;
+  hy -= up*5;
   const hr = (walking || sitting) ? 19 : (eating ? 17 : 18);
   const blink = Math.sin(S.t*0.83) > .988 || Math.sin(S.t*1.41 + 2) > .991;
   const open = (walking || sitting || eating || w > .3 || k > .25) && !(blink && k < .3);
@@ -359,8 +449,9 @@ function drawCat(){
   const two = walking || sitting;
   // while she is being stroked she shuts her eyes and enjoys it
   const bliss = c.purr > .25;
+  const ey = hy - 2 - up*4;
   const eye = (open && !bliss)
-    ? `<circle cx="${hx-8}" cy="${hy-2}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${hy-2}" r="2.4" fill="${eyeCol}"/>`:''}`
+    ? `<circle cx="${hx-8}" cy="${ey}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${ey}" r="2.4" fill="${eyeCol}"/>`:''}`
     : `<path d="M${hx-13} ${hy-1} q5 ${bliss?-4:4} 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>${
         two?`<path d="M${hx+3} ${hy-1} q5 ${bliss?-4:4} 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>`:''}`;
 
@@ -371,13 +462,18 @@ function drawCat(){
   const whiskers = `<g fill="none" stroke="${mix('#3D4A4F','#cfdcd7',n)}" stroke-width="1.15" stroke-linecap="round"
       opacity="${(.5+k*.4).toFixed(2)}">${wfan(-1, 15+k*6)}${wfan(1, 15+k*6)}</g>`;
 
+  // the yawn that starts the fourth step, and the five cowlicks of the third
+  const yawn = c.yawn > .02
+    ? `<ellipse cx="${hx}" cy="${(hy+9).toFixed(1)}" rx="${(5.5*c.yawn).toFixed(1)}" ry="${(7*c.yawn).toFixed(1)}"
+         fill="#D98C94" opacity="${(c.yawn*.9).toFixed(2)}"/>` : '';
   $('catArt').innerHTML = `${body}
     <circle cx="${hx}" cy="${hy}" r="${hr}" fill="var(--cat)"/>
+    ${cowlicks(hx, hy, hr)}
     <path d="M${hx-15} ${hy-11} l${(-3+ears).toFixed(1)} ${(-15+ears*2.1).toFixed(1)} l15 6 Z" fill="var(--cat)"/>
     <path d="M${hx+10} ${hy-14} l${(6-ears).toFixed(1)} ${(-14+ears*2.1).toFixed(1)} l9 10 Z" fill="var(--cat)"/>
     ${eye}
     <path d="M${hx} ${hy+6} l-3 3 l3 2 l3 -2 Z" fill="${eyeCol}" opacity=".75"/>
-    ${whiskers}`;
+    ${yawn}${whiskers}`;
 
   if(!carried && S.mode === 'rest' && w < .12 && k < .1){
     let z = '';
@@ -430,6 +526,9 @@ function hintTargets(){
 function advance(){
   S.hint.step = Math.min(S.hint.step + 1, STEPS.length - 1);
   S.hint.k = 0; S.hint.ping = 0; S.hint.flare = 0; S.idle = 0;
+  const now = STEPS[S.hint.step];
+  if(now === 'dusk'){ S.cat.yawn = 1; S.drift = 0; }
+  if(now === 'done') sfx('done');
 }
 
 function hintThink(dt){
@@ -440,9 +539,15 @@ function hintThink(dt){
   else if(step === 'groom' && S.strokes >= CFG.cat.strokes) advance();
   else if(step === 'dusk' && S.sun.set && S.night > .97) advance();
 
-  const want = (S.idle > CFG.scene.hintWait && step !== 'done') ? 1 : 0;
-  h.k += (want - h.k) * Math.min(1, dt * (want ? 1.5 : 3.4));
+  // the moment you pick something up is the moment you most need to see where it goes,
+  // so holding something keeps the suggestion up instead of dismissing it
+  const dragging = !!S.drag;
+  // grooming is five taps in a row, so letting the light blink off between them would
+  // only blink it off five times: she stays lit for as long as that step is running
+  const want = (step !== 'done' && (dragging || step === 'groom' || S.idle > CFG.scene.hintWait)) ? 1 : 0;
+  h.k += (want - h.k) * Math.min(1, dt * (want ? (dragging ? 7 : 1.5) : 3.4));
   h.flare = Math.max(0, h.flare - dt*1.5);
+  if(h.k > .45 && h.said !== h.step){ h.said = h.step; sfx('hint'); }
 
   if(h.k > .5){
     h.ping += dt;
@@ -457,6 +562,7 @@ function allows(what){ return WANT[STEPS[S.hint.step]] === what; }
 
 // touching the wrong thing is never an error: the current suggestion simply comes up louder
 function reject(){
+  sfx('nudge');
   S.hint.flare = 1;
   S.hint.k = Math.max(S.hint.k, .62);
   S.idle = CFG.scene.hintWait + 1;
@@ -465,8 +571,9 @@ function reject(){
 }
 
 function drawHint(){
-  const h = S.hint, t = hintTargets();
-  const breathe = .60 + .40*Math.sin(S.t*1.9);
+  const h = S.hint, t = hintTargets(), k = ps();
+  const dragging = !!S.drag;
+  const breathe = dragging ? .95 : .60 + .40*Math.sin(S.t*1.9);
   const boost = (1 + h.flare*1.25) * CFG.scene.glowStrength;
   let s = '';
   // a wash of warm light alone disappears on pale grass, so every suggestion is a pool
@@ -483,8 +590,18 @@ function drawHint(){
             <ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${rr.toFixed(1)}" ry="${(rr*0.42).toFixed(1)}"
               fill="none" stroke="var(--glow)" stroke-width="1.6" opacity="${(a*.7).toFixed(3)}"/>`;
   };
-  if(t.drop) s += pool(t.drop, STEPS[h.step] === 'dusk' ? 1.05 : .62);   // where it goes: quieter
-  if(t.grab) s += pool(t.grab, 1.0);        // what to take: louder
+  // once it is in your hand, the thing itself needs no light; the destination needs all of it
+  if(t.drop) s += pool(t.drop, (STEPS[h.step] === 'dusk' ? 1.05 : .62) * (dragging ? 1.9 : 1));
+  if(t.grab && !dragging) s += pool(t.grab, 1.0);
+  if(S.cue.fish > .02 && !S.fish.inDish)    // you tapped the dish: the fish is over there
+    s += pool({ x: S.fish.x, y: S.fish.y + 10, r: 72*k }, S.cue.fish * 1.3);
+  // the one path in the piece: the sun is a long way from where it has to go
+  if(dragging && S.drag.what === 'sun'){
+    const mx = (S.sun.x + SLOT.x)/2, my = Math.min(S.sun.y, SLOT.y) + Math.abs(SLOT.y - S.sun.y)*0.18;
+    s += `<path d="M${S.sun.x.toFixed(1)} ${S.sun.y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${SLOT.x} ${SLOT.y}"
+            fill="none" stroke="var(--glow)" stroke-width="2.4" stroke-linecap="round"
+            stroke-dasharray="2 12" stroke-dashoffset="${(-S.t*26).toFixed(1)}" opacity=".62"/>`;
+  }
   $('hintG').innerHTML = s;
 
   // a ring opening out of the destination, so a still picture still says "here"
@@ -529,11 +646,17 @@ function think(dt){
     S.sun.x = lerp(S.sun.x, SLOT.x, Math.min(1, dt*2.2));
     S.night = clamp(S.night + dt*M.duskSpeed, 0, 1);
   } else if(step === 'dusk'){
-    // let go anywhere but the notch and it floats back up, and the morning comes back with it
-    S.sun.x = lerp(S.sun.x, SUN0.x, Math.min(1, dt*1.8));
-    S.sun.y = lerp(S.sun.y, SUN0.y, Math.min(1, dt*1.8));
+    // the sun starts going down by itself. a thing that is already moving towards somewhere
+    // says both "I can be moved" and "that is where I am headed" — a ring says neither.
+    S.drift += dt;
+    const f = clamp(S.drift/34, 0, .34);
+    const tx = SUN0.x + (SLOT.x - SUN0.x)*f, ty = SUN0.y + (SLOT.y - SUN0.y)*f;
+    S.sun.x = lerp(S.sun.x, tx, Math.min(1, dt*1.7));
+    S.sun.y = lerp(S.sun.y, ty, Math.min(1, dt*1.7));
     S.night = clamp(S.night - dt*1.1, 0, 1);
   }
+  // the sky goes gold on the side the sun is heading for, before anyone touches anything
+  S.warm += (((step === 'dusk' && !S.sun.set) ? 1 : 0) - S.warm) * Math.min(1, dt*0.7);
 
   // she goes for the fish once it is actually in the dish
   if(S.fish.inDish && !S.fishEaten && S.mode !== 'eat' && !dragging){
@@ -555,11 +678,13 @@ function think(dt){
   }
 
   if(S.mode === 'eat'){
-    S.eat -= dt;
+    const was = Math.ceil(S.eat*3); S.eat -= dt;
+    if(Math.ceil(S.eat*3) !== was) sfx('munch');
     S.fish.left = clamp(S.eat / CFG.cat.appetite, 0, 1);
     if(S.eat <= 0){
       S.fish.left = 0; S.fishEaten = true; S.mode = 'rest'; c.stretch = 1;
-      c.puff = 1;                                     // full, pleased, and standing on end
+      c.puff = 0; c.shake = 1;                        // full — and she shakes herself untidy
+      sfx('shake');
     }
   }
 
@@ -568,9 +693,15 @@ function think(dt){
   const awake = step === 'out' ? busy : (step === 'done' ? false : true);
   c.wake = awake ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
 
-  // her fur only comes down by hand. before the grooming step it settles by itself.
-  if(step === 'groom') c.puff = lerp(c.puff, 1 - S.strokes/CFG.cat.strokes, Math.min(1, dt*7));
-  else if(!dragging) c.puff = clamp(c.puff - dt*2.4, 0, 1);
+  if(!dragging) c.puff = clamp(c.puff - dt*2.4, 0, 1);
+  // the cowlicks fade in for the grooming step and stay until they are laid flat by hand
+  S.mess += (((step === 'groom') ? 1 : 0) - S.mess) * Math.min(1, dt*3.2);
+  c.shake = Math.max(0, c.shake - dt*1.7);
+  c.yawn  = Math.max(0, c.yawn  - dt*0.7);
+  S.cue.fish = Math.max(0, S.cue.fish - dt*0.5);
+  S.cue.dish = (S.drag && S.drag.what === 'fish') ? 1 : Math.max(0, S.cue.dish - dt*0.5);
+  // in the fourth step she watches the sky, so she faces whichever way the sun is
+  if(step === 'dusk' && S.mode === 'rest' && !dragging) c.face = S.sun.x < c.x ? -1 : 1;
 
   c.purr = Math.max(0, c.purr - dt*1.9);
   if(c.stretch > 0 && !dragging) c.stretch = Math.max(0, c.stretch - dt*2.4);
@@ -586,16 +717,19 @@ const near = (p, o, r) => Math.hypot(p.x - o.x, p.y - o.y) < r;
 const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.25) < 62*catScale();
 const onFish = p => fishShown() && S.fish.left > .02 && near(p, S.fish, 46*ps());
 const onSun  = p => S.night < .99 && near(p, S.sun, 58*ps());
+const onDish = p => Math.hypot(p.x - DISH.x, (p.y - DISH.y)*1.6) < 54*ps();
 const hideTitle = () => { if(!S.touched){ S.touched = true; $('titleG').classList.add('gone'); } };
 
 function stroke(){
   const c = S.cat;
   S.strokes = Math.min(CFG.cat.strokes, S.strokes + 1);
-  c.purr = 1; S.idle = 0;
-  for(let i=0;i<5;i++) SPARK.push({ x: c.x + rnd(-42,42), y: c.y - rnd(4,30), a: rnd(0,.25) });
+  c.purr = 1; c.stretch = Math.max(c.stretch, .35); S.idle = 0;
+  for(let i=0;i<7;i++) SPARK.push({ x: c.x + rnd(-44,44), y: c.y - rnd(10,44), a: rnd(0,.25) });
+  sfx('purr');
 }
 
 svg.addEventListener('pointerdown', e => {
+  audioOn();                       // browsers hold sound back until a gesture; this is the gesture
   const p = toSvg(e); hideTitle();
   const step = STEPS[S.hint.step];
 
@@ -605,13 +739,20 @@ svg.addEventListener('pointerdown', e => {
   // the grooming step is the one tap in the piece — five of them, and her fur lies flat
   if(step === 'groom'){ if(onCat(p)) stroke(); else reject(); return; }
 
+  // tapping the dish is a fair guess, not a mistake: answer it by lighting the fish
+  if(step === 'feed' && onDish(p) && !onFish(p)){
+    S.cue.fish = 1; S.hint.k = Math.max(S.hint.k, .75); S.idle = CFG.scene.hintWait + 1;
+    sfx('nudge'); return;
+  }
+
   const hit = onSun(p) ? 'sun' : onFish(p) ? 'fish' : onCat(p) ? 'cat' : null;
   if(!hit || !allows(hit)) return reject();
 
   const o = hit === 'cat' ? S.cat : hit === 'fish' ? S.fish : S.sun;
   if(hit === 'cat'){ S.cat.puff = Math.min(1, S.cat.puff + .9); S.mode = 'held'; S.target = null; }
-  if(hit === 'fish'){ S.fish.inDish = false; }
+  if(hit === 'fish'){ S.fish.inDish = false; S.cue.dish = 1; }   // picked it up: the dish answers
   if(hit === 'sun'){ S.sun.set = false; }
+  sfx('pick');
   S.drag = { what: hit, dx: o.x - p.x, dy: o.y - p.y, moved: 0 };
   S.idle = 0;
   svg.setPointerCapture(e.pointerId);
@@ -648,21 +789,21 @@ function release(){
     const d = Math.hypot(S.cat.x - BED.x, S.cat.y - (BED.y - 12));
     if(step === 'out'){
       S.inBed = d < 70*k;
-      if(!S.inBed) advance();                       // out of the basket, however far — that is the step
+      if(!S.inBed){ sfx('place'); advance(); }      // out of the basket, however far — that is the step
     } else if(step === 'bed'){
       if(d < 78*k){                                  // close enough counts: she curls up in it herself
         S.cat.x = BED.x; S.cat.y = BED.y - 12; S.cat.face = 1;
         S.inBed = true; S.mode = 'rest'; S.cat.stretch = 0; S.cat.puff = 0;
-        advance();
+        sfx('place'); advance();
       }
     }
   } else if(what === 'fish'){
     if(step === 'feed' && Math.hypot(S.fish.x - DISH.x, S.fish.y - DISH.y) < 52*k){
-      S.fish.x = DISH.x; S.fish.y = DISH.y - 4; S.fish.inDish = true; S.idle = 0;
+      S.fish.x = DISH.x; S.fish.y = DISH.y - 4; S.fish.inDish = true; S.idle = 0; sfx('place');
     }
   } else if(what === 'sun'){
     if(step === 'dusk' && Math.hypot(S.sun.x - SLOT.x, S.sun.y - SLOT.y) < 84*k){
-      S.sun.set = true; S.idle = 0;
+      S.sun.set = true; S.idle = 0; sfx('dusk');
     }
   }
 }
@@ -695,6 +836,7 @@ requestAnimationFrame(frame);
 window.CAT  = () => S;
 window.CATP = {
   skip: () => advance(),
+  mute: v => { MUTE = v === undefined ? !MUTE : !!v; return MUTE; },
   CFG, applyColors, relayout: layout,
   step: () => STEPS[S.hint.step],
   bed: () => BED, dish: () => DISH, slot: () => SLOT, sun0: () => SUN0, out: () => OUT,
@@ -704,9 +846,11 @@ window.CATP = {
     Object.assign(S.sun, { x: SUN0.x, y: SUN0.y, set: false });
     Object.assign(S.fish, { x: FISH0.x, y: FISH0.y, inDish: false, left: 1 });
     S.night = 0; S.fishEaten = false; S.strokes = 0; S.inBed = true;
+    S.mess = 0; S.warm = 0; S.drift = 0; S.cue = { fish: 0, dish: 0 };
+    S.cat.yawn = 0; S.cat.shake = 0;
     S.mode = 'rest'; S.target = null; S.drag = null; S.eat = 0; S.idle = 999;
     S.touched = false; $('titleG').classList.remove('gone');
-    S.hint = { step: 0, k: 0, ping: 0, flare: 0 };
+    S.hint = { step: 0, k: 0, ping: 0, flare: 0, said: -1 };
     PING.length = 0; SPARK.length = 0;
   }
 };

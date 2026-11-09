@@ -27,11 +27,35 @@ about the sun. This vocabulary is learned once in step one and then reused four 
 The earlier night version dimmed everything except the target. **That does not work in
 daylight — it reads as a fault.** Do not reintroduce it.
 
+**A suggestion must outlive the grab.** The moment someone picks something up is the moment
+they most need to see where it goes, so holding something keeps the suggestion up: the glow
+on the thing itself goes out (it is already in your hand) and the destination burns brighter
+until it is actually dropped there. Fading the hint because "someone is clearly doing
+something" was a real defect, not a style choice.
+
+The dish keeps a dotted ring around it at all times, so it looks like somewhere things go
+before anything is said. The two ends of the feeding step point at each other: picking up
+the fish flares the dish's ring, and tapping the dish lights the fish. Tapping the dish is a
+fair guess, not a mistake, and is answered rather than rebuffed.
+
 ## Interaction
 
 Four of the five steps are drags: the cat out of the basket, the fish into the dish, the sun
 into the notch, the cat back to bed. Grooming is the one tap — five taps flatten her fur,
-and her fur going down is the only counter the step needs. Dragging was chosen over clicking
+and her fur going down is the only counter the step needs. She stays lit for the whole of
+that step, because blinking the light off after each tap would blink it off five times.
+
+**She is untidy, not frightened.** Raised hackles and shivering say "keep away", which is the
+exact opposite of what the grooming step asks for, and first-time viewers read it as a
+warning. She now shakes herself after her meal and ends up with five cowlicks on her head;
+each stroke lays one flat. Do not go back to spikes.
+
+**The sun step needs a reason, not a brighter ring.** Nobody has seen a sun that can be
+dragged, so three things answer three different questions: she yawns and tips her head back
+to watch the sky (why), the sun starts sinking towards the notch on its own (that it moves,
+and where to), and the sky goes gold over the notch (that a sunset belongs there). A faint
+dotted arc appears between sun and notch while it is held — the only path in the piece,
+because this is the only step where the distance is large. Dragging was chosen over clicking
 knowingly: clicking needs no teaching and dragging does, so **if a first-time tester stalls
 on step one, the fix is to go back to click-to-walk**, which is still what `think()` does for
 the walk/run modes.
@@ -59,6 +83,13 @@ hairbrush standing beside her.
 Five dots across the top track the steps. This was added on request and reverses the earlier
 rule against progress indicators — it does make the piece more legible and slightly more
 like a checklist, and that trade was made deliberately.
+
+Sound is synthesised with WebAudio on the spot, so the page stays one folder with no audio
+files to fetch. It starts on the first touch, because browsers hold sound back until a
+gesture. **Sound only ever confirms what the picture has already said** — a muted laptop,
+which is what a classroom demo usually is, must lose nothing it needs to get through. M
+mutes; there is deliberately no on-screen control, since that would be the one button in a
+piece whose whole point is having none.
 
 Saved defaults live in `js/config.js`; the "Field tuning" panel (`js/panel.js`) edits a live
 copy of them and never writes to disk. `window.CATP` exposes `step()`, `skip()`, `reset()`
