@@ -1,35 +1,45 @@
-// Saved defaults for Cat Naps — "Night Shift".
+// Saved defaults for Cat Naps — "Morning Shift".
 // The tool panel (press T, or open the page with #tools) edits a live copy of these.
 // "Copy settings" writes a prompt that asks Claude Code to save them back here.
 window.CAT_DEFAULTS = {
   colors: {
-    skyNight:  '#0B1A24',   // petrol blue, the middle of the night
-    skyDay:    '#C6DAD4',   // pale mint, the middle of the day
-    dusk:      '#E8793F',   // the burn that passes through at dawn and dusk
-    roadNight: '#0C161C',   // wet asphalt after dark
-    roadDay:   '#8FA5A1',   // the same asphalt in daylight
-    sodium:    '#FFA23F',   // the street lamp
-    cat:       '#050C10'    // the cat is the only true black in the frame
+    skyDayTop:   '#7FB6E8',   // a clear morning, straight up
+    skyDayMid:   '#BCDCF2',
+    skyDayLow:   '#F3E8DC',   // warm haze where the sky meets the hills
+    skyNightTop: '#18213F',
+    skyNightMid: '#2B3463',
+    skyNightLow: '#5B4C78',
+    grassTop:    '#86C88F',   // the far field, slightly cooler
+    grassLow:    '#ADDCA3',   // the near grass, warmer and lighter
+    grassNight:  '#2E4A52',
+    treeFar:     '#8ECBB4',
+    treeNear:    '#5FA98F',
+    hill:        '#AFDCC9',
+    bed:         '#E8907E',   // the basket — the only strong colour that is not the fish
+    cushion:     '#F6E3D2',
+    dish:        '#F4EEE3',
+    fish:        '#FF9D3D',
+    cat:         '#0C1317',   // she is the only true black in the frame, day or night
+    glow:        '#FFF1BE'    // every suggestion in the piece is made of this one colour
   },
   motion: {
-    dayLength:   110,       // seconds for a whole day and night
-    sleepAfter:  10,        // seconds with nobody touching her before she lies down and sleeps
-    wakeSpeed:   4.4,       // how sharply it startles
-    sleepSpeed:  2.6,       // how fast she drops back to sleep once you stop
-    walkSpeed:   74,        // px per second when she is walking somewhere you sent her
-    runSpeed:    150        // px per second when she has seen the fish
+    wakeSpeed:   4.4,         // how sharply she comes awake
+    sleepSpeed:  2.6,         // how fast she drops back under
+    walkSpeed:   78,          // px per second walking
+    runSpeed:    152,         // px per second once she has seen the fish
+    duskSpeed:   0.55         // how fast the sky finishes turning once the sun is in the notch
   },
   scene: {
-    reflection:  0.42,      // how much the wet road gives back
-    rain:        1,         // drizzle through the lamp cone after dark (0 = dry)
-    grain:       0.06,      // film grain over everything
-    lampFlicker: 1,         // how restless the sodium lamp is
-    cloud:       1,         // cloud cover drifting across the sky
-    depth:       1          // how much haze separates the far skyline from the near one
+    decor:       1,           // bushes, tufts, flowers, logs — 0 strips the field bare
+    cloud:       1,
+    grain:       0.05,
+    glowStrength: 1.25,          // how loud the suggestions are
+    hintWait:    2.2          // seconds of nobody doing anything before a suggestion comes up
   },
   cat: {
-    size:        1.25,      // how big the cat is drawn
-    bristle:     1,         // how far the fur stands up
-    appetite:    2.2        // seconds spent eating before lying down again
+    size:        1.2,
+    bristle:     1,
+    appetite:    2.2,         // seconds spent eating
+    strokes:     5            // how many strokes it takes to smooth her down
   }
 };

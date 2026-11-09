@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Cat Naps — Night Shift</title>
-<meta name="description" content="A wet street that fills the screen. She sleeps through the sunlight and works the night. Touch her and she bristles; carry her anywhere; leave a fish out and she comes to eat.">
+<title>Cat Naps</title>
+<meta name="description" content="A field with a cat asleep in her basket. Lift her out, feed her, smooth her down, take the day away, and put her back to bed. Nothing is written down — the light tells you what to touch next.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet">
@@ -18,104 +18,79 @@
 </head>
 <body>
 <svg id="stage" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice"
-     aria-label="A wet street under a lamp. She sleeps in the daylight and is up at night. Touch her, carry her, or put a fish down.">
+     aria-label="A field with a cat asleep in a basket. Lift her out, put the fish in her dish, smooth her fur, set the sun, and carry her back to bed.">
   <defs>
     <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop id="skyTop" offset="0%"/><stop id="skyMid" offset="56%"/><stop id="skyLow" offset="100%"/>
+      <stop id="skyTop" offset="0%"/><stop id="skyMid" offset="58%"/><stop id="skyLow" offset="100%"/>
     </linearGradient>
-    <linearGradient id="roadGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop id="roadTop" offset="0%"/><stop id="roadBot" offset="100%"/>
+    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop id="groundTop" offset="0%"/><stop id="groundBot" offset="100%"/>
     </linearGradient>
-    <radialGradient id="pool" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="var(--sodium)" stop-opacity=".60"/>
-      <stop offset="42%"  stop-color="var(--sodium)" stop-opacity=".20"/>
-      <stop offset="100%" stop-color="var(--sodium)" stop-opacity="0"/>
+
+    <!-- the one suggestion in the piece: a patch of ground that is brighter than the rest -->
+    <radialGradient id="glowPool" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="var(--glow)" stop-opacity="1"/>
+      <stop offset="40%"  stop-color="var(--glow)" stop-opacity=".62"/>
+      <stop offset="72%"  stop-color="var(--glow)" stop-opacity=".22"/>
+      <stop offset="100%" stop-color="var(--glow)" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="moonPool" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="#d8e9f6" stop-opacity=".66"/>
-      <stop offset="38%"  stop-color="#bfd6ea" stop-opacity=".33"/>
-      <stop offset="100%" stop-color="#9fbcd6" stop-opacity="0"/>
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FFF3C4" stop-opacity=".95"/>
+      <stop offset="38%"  stop-color="#FFE898" stop-opacity=".34"/>
+      <stop offset="100%" stop-color="#FFE898" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="var(--sodium)" stop-opacity=".95"/>
-      <stop offset="26%"  stop-color="var(--sodium)" stop-opacity=".32"/>
-      <stop offset="100%" stop-color="var(--sodium)" stop-opacity="0"/>
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#EAF2FF" stop-opacity=".80"/>
+      <stop offset="40%"  stop-color="#C8D8F6" stop-opacity=".22"/>
+      <stop offset="100%" stop-color="#C8D8F6" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="cone" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="var(--sodium)" stop-opacity=".34"/>
-      <stop offset="70%"  stop-color="var(--sodium)" stop-opacity=".07"/>
-      <stop offset="100%" stop-color="var(--sodium)" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="lampSmear" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="var(--sodium)" stop-opacity=".5"/>
-      <stop offset="100%" stop-color="var(--sodium)" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1">
-      <stop id="hazeA" offset="0%"/><stop id="hazeB" offset="100%"/>
-    </linearGradient>
-    <radialGradient id="hintDim" gradientUnits="userSpaceOnUse" cx="195" cy="650" r="240">
-      <stop offset="0%"   stop-color="#000" stop-opacity="0"/>
-      <stop offset="42%"  stop-color="#000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="1"/>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="78%">
+      <stop offset="56%"  stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity=".30"/>
     </radialGradient>
-    <radialGradient id="vignette" cx="50%" cy="46%" r="76%">
-      <stop offset="52%"  stop-color="#000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000" stop-opacity=".6"/>
-    </radialGradient>
-    <filter id="wet"  x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2"/></filter>
-    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6"/></filter>
-    <filter id="cloudy" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+
+    <filter id="soft"   x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="cloudy" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="13"/></filter>
     <filter id="grain" x="0" y="0" width="100%" height="100%">
       <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/>
       <feColorMatrix type="saturate" values="0"/>
     </filter>
-    <clipPath id="roadClip"><rect id="roadClipRect" x="0" y="470" width="390" height="374"/></clipPath>
-    <clipPath id="coneClip"><path id="coneShape" d=""/></clipPath>
   </defs>
 
   <rect id="sky" width="100%" height="100%" fill="url(#skyGrad)"/>
   <g id="stars"></g>
   <g id="celestial"></g>
   <g id="clouds"></g>
-  <g id="skylineFar"></g>
-  <rect id="hazeBand" x="0" y="300" width="100%" height="180" fill="url(#haze)"/>
-  <g id="skylineNear"></g>
+  <g id="hills"></g>
+  <g id="treesFar"></g>
+  <g id="treesNear"></g>
 
-  <rect id="road" x="0" y="470" width="100%" height="500" fill="url(#roadGrad)"/>
-  <g clip-path="url(#roadClip)">
-    <g id="paving"></g>
-    <g id="sheen"></g>
-    <g id="puddles"></g>
-    <g id="wetwork"></g>
-  </g>
+  <rect id="ground" x="0" y="408" width="100%" height="420" fill="url(#groundGrad)"/>
+  <g id="decor"></g>
 
-  <g id="rainAll"></g>
-  <g id="coneG"></g>
-  <g id="rain" clip-path="url(#coneClip)"></g>
-  <g id="splash"></g>
-  <g id="props"></g>
-
-  <g id="ping"></g>
-  <g id="hintG" pointer-events="none"></g>
-  <g id="fishRef" opacity="0"></g>
+  <g id="hintG"  pointer-events="none"></g>
+  <g id="ping"   pointer-events="none"></g>
+  <g id="bedBack"></g>
+  <g id="dish"></g>
   <g id="fish"></g>
   <g id="catShadow"></g>
-  <use id="catRef" href="#catArt" filter="url(#wet)" opacity="0"/>
   <g id="catArt"></g>
   <g id="zzz"></g>
-  <g id="tray"></g>
+  <g id="bedFront" pointer-events="none"></g>
+  <g id="sparkle" pointer-events="none"></g>
 
-  <rect id="hintDimRect" width="100%" height="100%" fill="url(#hintDim)" opacity="0" pointer-events="none"/>
   <rect width="100%" height="100%" fill="url(#vignette)" pointer-events="none"/>
-  <rect id="grainLayer" width="100%" height="100%" filter="url(#grain)" opacity=".06"
+  <rect id="grainLayer" width="100%" height="100%" filter="url(#grain)" opacity=".05"
         style="mix-blend-mode:overlay" pointer-events="none"/>
 
+  <g id="dots" pointer-events="none"></g>
+
   <g id="titleG" pointer-events="none">
-    <text id="t1" x="40" y="714" class="display" font-size="54">Cat Naps</text>
-    <text id="t2" x="42" y="748" class="hint" font-size="16">she sleeps through the sun and works the night</text>
+    <text id="t1" x="32" y="152" class="display" font-size="46">Cat Naps</text>
+    <text id="t2" x="34" y="180" class="hint" font-size="15">follow the light</text>
   </g>
 </svg>
-<div id="panel" class="panel" hidden aria-label="Street tuning"></div>
+<div id="panel" class="panel" hidden aria-label="Field tuning"></div>
 <script>
   /* Same reason: fetch the current code on every visit rather than whatever the browser kept.
      async = false keeps config -> app -> panel running in that order. */

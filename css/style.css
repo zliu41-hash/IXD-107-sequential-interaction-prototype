@@ -1,30 +1,31 @@
-/* Cat Naps — Night Shift.
-   The street fills the window: one SVG, no frame, no scrollbars, nothing to flip between. */
+/* Cat Naps.
+   The field fills the window: one SVG, no frame, no scrollbars, nothing to flip between. */
 :root{
-  --sodium:  #ffa23f;
-  --cat:     #050c10;
-  --paper:   #eef4f1;
+  --glow:    #fff6dc;
+  --fish:    #ff9d3d;
+  --cat:     #0c1317;
+  --paper:   #1d2a33;
   --display: "Fraunces", Georgia, "Times New Roman", serif;
-  color-scheme: dark;
+  color-scheme: light;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;overflow:hidden;background:#05090e}
+html,body{height:100%;margin:0;overflow:hidden;background:#bcdcf2}
 body{ color:var(--paper); }
 svg#stage{
   display:block; position:fixed; inset:0;
   width:100vw; height:100vh; height:100dvh;
   touch-action:none; user-select:none; -webkit-user-select:none; cursor:default;
 }
-#catArt{ cursor:grab } #fish, #tray{ cursor:grab }
+#catArt, #fish, #celestial{ cursor:grab }
 
 .display{
   font-family:var(--display); font-weight:300;
   font-variation-settings:"SOFT" 60, "WONK" 1, "opsz" 120;
-  fill:var(--paper); letter-spacing:-.018em;
+  fill:var(--paper); letter-spacing:-.018em; opacity:.82;
 }
 .hint{
   font-family:var(--display); font-weight:300; font-style:italic;
-  fill:var(--paper); opacity:.6; letter-spacing:.01em;
+  fill:var(--paper); opacity:.5; letter-spacing:.01em;
 }
 #titleG{ transition:opacity 1.2s ease .2s }
 #titleG.gone{ opacity:0 }
@@ -46,15 +47,15 @@ svg#stage{
 .panel header strong{font-family:var(--display);font-weight:500;font-size:15px}
 .panel header button{border:0;background:none;color:#9fb3ad;font:inherit;cursor:pointer;padding:4px 6px}
 .panel details{border-bottom:1px solid #1b2a33}
-.panel summary{padding:10px 14px;cursor:pointer;color:var(--sodium)}
+.panel summary{padding:10px 14px;cursor:pointer;color:var(--fish)}
 .panel .rows{padding:2px 14px 12px;display:grid;gap:9px}
 .panel label{display:grid;grid-template-columns:1fr auto;gap:3px 8px;align-items:center;color:#cdd9d5}
 .panel label span.v{color:#7e918c;font-variant-numeric:tabular-nums}
-.panel input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--sodium)}
+.panel input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--fish)}
 .panel input[type=color]{width:46px;height:24px;border:1px solid #2b3f49;border-radius:5px;padding:0;background:none}
 .panel .actions{display:flex;gap:7px;padding:12px 14px 14px;flex-wrap:wrap}
 .panel .actions button{font:inherit;padding:7px 10px;border-radius:9px;border:1px solid #2b3f49;background:#16242d;color:#dce5e2;cursor:pointer}
-.panel .actions button:hover{border-color:var(--sodium)}
-.panel .actions button.primary{background:var(--sodium);color:#10202a;border-color:var(--sodium);font-weight:600}
+.panel .actions button:hover{border-color:var(--fish)}
+.panel .actions button.primary{background:var(--fish);color:#10202a;border-color:var(--fish);font-weight:600}
 .panel .note{padding:0 14px 14px;color:#7e918c;min-height:1em}
 .panel textarea{width:calc(100% - 28px);margin:0 14px 14px;height:92px;background:#0a141b;color:#dce5e2;border:1px solid #2b3f49;border-radius:8px;font:11px ui-monospace,Menlo,monospace}

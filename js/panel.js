@@ -1,4 +1,4 @@
-/* Tool panel — "Street tuning".
+/* Tool panel — "Field tuning".
    Hidden by default. Press T, or open the page with #tools.
    Change values live, restore the saved defaults, or copy the settings
    as a prompt to paste back into Claude Code. */
@@ -7,34 +7,36 @@ const T = window.CATP, CFG = T.CFG, DEF = window.CAT_DEFAULTS;
 const panel = document.getElementById('panel');
 
 const GROUPS = [
-  { name:'Light and colour', key:'colors', open:true, items:[
-    ['skyNight','Sky at midnight','color'], ['skyDay','Sky at noon','color'],
-    ['dusk','The burn at dawn and dusk','color'],
-    ['roadNight','Road after dark','color'], ['roadDay','Road in daylight','color'],
-    ['sodium','The street lamp','color'], ['cat','The cat','color'] ]},
+  { name:'Colour', key:'colors', open:true, items:[
+    ['skyDayTop','Sky overhead, morning','color'], ['skyDayLow','Sky at the hills, morning','color'],
+    ['skyNightTop','Sky overhead, night','color'], ['skyNightLow','Sky at the hills, night','color'],
+    ['grassTop','The far field','color'], ['grassLow','The near grass','color'],
+    ['grassNight','The field at night','color'],
+    ['treeFar','Far trees','color'], ['treeNear','Near trees','color'], ['hill','The hills','color'],
+    ['bed','The basket','color'], ['cushion','The cushion','color'], ['dish','The dish','color'],
+    ['fish','The fish','color'], ['cat','The cat','color'], ['glow','The suggestion','color'] ]},
   { name:'Pace', key:'motion', items:[
-    ['dayLength','A whole day lasts','range',20,240,5,'s'],
-    ['sleepAfter','Left alone before she sleeps','range',2,40,1,'s'],
-    ['wakeSpeed','How sharply it startles','range',1,9,.2,'×'],
-    ['sleepSpeed','How slowly it sinks back','range',.2,3,.1,'×'],
+    ['wakeSpeed','How sharply she wakes','range',1,9,.2,'x'],
+    ['sleepSpeed','How slowly she sinks back','range',.2,3,.1,'x'],
     ['walkSpeed','Walking speed','range',20,180,2,'px/s'],
-    ['runSpeed','Running for the fish','range',40,320,5,'px/s'] ]},
-  { name:'The wet street', key:'scene', items:[
-    ['reflection','How much the road gives back','range',0,1,.02,''],
-    ['rain','Drizzle in the lamp cone','range',0,2,.05,'×'],
+    ['runSpeed','Running for the fish','range',40,320,5,'px/s'],
+    ['duskSpeed','How fast night finishes falling','range',.1,2,.05,'x'] ]},
+  { name:'The field', key:'scene', items:[
+    ['decor','Bushes, tufts, flowers, logs','range',0,1,.05,''],
+    ['cloud','Cloud drift','range',0,2,.05,'x'],
     ['grain','Film grain','range',0,.2,.005,''],
-    ['lampFlicker','Lamp flicker','range',0,2,.05,'×'],
-    ['cloud','Cloud cover','range',0,2,.05,'×'],
-    ['depth','Haze between the rooftops','range',0,1.6,.05,'×'] ]},
+    ['glowStrength','How loud the suggestions are','range',0,2,.05,'x'],
+    ['hintWait','Quiet before a suggestion','range',.4,8,.2,'s'] ]},
   { name:'The cat', key:'cat', items:[
-    ['size','Size','range',.8,1.8,.05,'×'],
-    ['bristle','How far the fur stands up','range',0,2,.05,'×'],
-    ['appetite','Time spent eating','range',.5,6,.1,'s'] ]}
+    ['size','Size','range',.8,1.8,.05,'x'],
+    ['bristle','How far the fur stands up','range',0,2,.05,'x'],
+    ['appetite','Time spent eating','range',.5,6,.1,'s'],
+    ['strokes','Strokes to smooth her down','range',1,10,1,''] ]}
 ];
 const fmt = (v,step) => step < 1 ? Number(v).toFixed(step < .1 ? 2 : 1) : String(Math.round(v));
 
 function build(){
-  let h = `<header><strong>Street tuning</strong><button type="button" id="tpClose" aria-label="Hide panel">Hide ✕</button></header>`;
+  let h = `<header><strong>Field tuning</strong><button type="button" id="tpClose" aria-label="Hide panel">Hide ✕</button></header>`;
   for(const g of GROUPS){
     h += `<details ${g.open?'open':''}><summary>${g.name}</summary><div class="rows">`;
     for(const it of g.items){
@@ -49,9 +51,8 @@ function build(){
   h += `<div class="actions">
       <button type="button" id="tpRestore">Restore defaults</button>
       <button type="button" class="primary" id="tpCopy">Copy settings</button>
-      <button type="button" id="tpNoon">Jump to noon</button>
-      <button type="button" id="tpNight">Jump to night</button>
-      <button type="button" id="tpReset">Put the cat back</button>
+      <button type="button" id="tpSkip">Skip a step</button>
+      <button type="button" id="tpReset">Start over</button>
     </div><div class="note" id="tpNote" role="status"></div>`;
   panel.innerHTML = h;
 
@@ -64,9 +65,8 @@ function build(){
     });
   }
   document.getElementById('tpClose'  ).addEventListener('click', () => show(false));
-  document.getElementById('tpNoon'   ).addEventListener('click', () => { T.setDay(.25); note('Midday.'); });
-  document.getElementById('tpNight'  ).addEventListener('click', () => { T.setDay(.75); note('Middle of the night.'); });
-  document.getElementById('tpReset'  ).addEventListener('click', () => { T.reset(); note('The cat is back in the middle of the street.'); });
+  document.getElementById('tpSkip'   ).addEventListener('click', () => { T.skip(); note('Now on: ' + T.step()); });
+  document.getElementById('tpReset'  ).addEventListener('click', () => { T.reset(); note('Back to the beginning: she is asleep in her basket.'); });
   document.getElementById('tpRestore').addEventListener('click', () => {
     for(const g of GROUPS) Object.assign(CFG[g.key], JSON.parse(JSON.stringify(DEF[g.key])));
     T.applyColors(); build(); note('Restored the saved defaults.');
@@ -75,7 +75,7 @@ function build(){
 }
 
 function settingsText(){
-  const lines = ['Cat Naps prototype — "Street tuning" panel settings',''];
+  const lines = ['Cat Naps prototype — "Field tuning" panel settings',''];
   for(const g of GROUPS){
     lines.push(`${g.name} (CAT_DEFAULTS.${g.key} in js/config.js)`);
     for(const it of g.items){

@@ -1,302 +1,315 @@
-/* Cat Naps — Night Shift
-   One wet street filling the screen. She sleeps through the daylight and is up all night.
-     touch her        -> she startles awake and her fur stands on end
-     carry her        -> let go anywhere and she stretches once, then settles there
-     put a fish down  -> she walks over, eats, and goes back to what the hour asks of her
-   Nothing completes, nothing fails, and the sun and moon keep going on their own. */
+/* Cat Naps
+   One field, one morning, one fixed sequence:
+     lift her out of the basket -> put the fish in her dish -> smooth her fur five times
+     -> take the sun down -> carry her back to bed, and it is over.
+   At each step only that step's own object answers. The others are inert until their turn.
+   There are no words, no arrows and no buttons: the only instruction in the piece is that
+   the thing you should touch next is lit, and the place it should go is lit more faintly. */
 (() => {
 'use strict';
 
 const CFG = JSON.parse(JSON.stringify(window.CAT_DEFAULTS));
 const $   = id => document.getElementById(id);
 const svg = $('stage');
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const lerp  = (a,b,k) => a + (b-a)*k;
 const rnd   = (a,b) => a + Math.random()*(b-a);
 const toSvg = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
                      return p.matrixTransform(svg.getScreenCTM().inverse()); };
 
-const hex  = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
-const rgb  = a => `rgb(${a.map(v=>Math.round(clamp(v,0,255))).join(',')})`;
-const mixA = (a,b,k) => { const A=hex(a), B=hex(b); return [lerp(A[0],B[0],k), lerp(A[1],B[1],k), lerp(A[2],B[2],k)]; };
-const mix  = (a,b,k) => rgb(mixA(a,b,k));
-const burn = (base, warm, k) => { const Wc = hex(warm); return rgb(base.map((v,i)=>lerp(v, Wc[i], k))); };
-const blend = (A,B,k) => A.map((v,i)=>lerp(v, B[i], k));
-const PAL = { road: [20,34,42], sky: [11,26,36] };
+const hex = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+const rgb = a => `rgb(${a.map(v=>Math.round(clamp(v,0,255))).join(',')})`;
+const mix = (a,b,k) => { const A=hex(a), B=hex(b); return rgb([0,1,2].map(i=>lerp(A[i],B[i],k))); };
+const hx2 = v => Math.round(clamp(v,0,255)).toString(16).padStart(2,'0');
+const dark = (c,k) => { const A=hex(c); return '#' + A.map(v=>hx2(v*(1-k))).join(''); };
 
 // ---- the world, sized to whatever window it lands in -----------------------
-const KERB = 470, FLOOR = 844;
-const CONE_TOP = 300;
-let CONE_SPREAD = 190;    // set from the frame width: a fixed cone swallows a phone screen whole,
-                          // leaving nowhere for her to be out in the rain
+const FLOOR = 844, HORIZON = 408;
+let W = 390;
+// everything the hand touches is measured off the frame, so the piece stays centred and
+// stays reachable from a phone up to a desktop. A fixed layout strands half of it offscreen.
+const ps = () => clamp(1 + (W/390 - 1)*0.17, 1, 1.6);          // prop scale
+const catScale = () => CFG.cat.size * ps();
 
-// how sheltered a point is: 1 under the lamp, 0 out in the rain, soft across the edge
-function coneHalf(y){
-  const t = clamp((y - CONE_TOP) / (FLOOR - CONE_TOP), 0, 1);
-  return 16 + t*(CONE_SPREAD - 16);
-}
-function dryness(x, y){
-  const edge = Math.max(18, CONE_SPREAD*0.28);
-  return clamp(1 - (Math.abs(x - LAMP.head) - (coneHalf(y) - edge)) / edge, 0, 1);
-}
-const sheltered = (x, y) => dryness(x, y) > .55;
-// she is scaled up on wider screens; anything measured against her body has to follow
-const catScale = () => CFG.cat.size * clamp(1 + (W/390 - 1)*0.17, 1, 1.75);
+let BED  = { x: 100, y: 676 };
+let DISH = { x: 280, y: 712 };
+let SLOT = { x: 330, y: 466 };          // the notch on the horizon the sun drops into
+let SUN0 = { x: 270, y: 176 };
+let MOON = { x: 96,  y: 182 };
+let PEN  = { x0: 54, x1: 336, y0: 556, y1: 806 };
+let FISH0 = { x: 190, y: 790 };
+let OUT  = { x: 230, y: 718 };          // somewhere out of the basket, for step one
 
-// her starting place is read off the lamp, not written down — on a wide screen a fixed x
-// puts her against the frame edge, far from the one thing she is supposed to be compared with
-function startSpot(){
-  const y = 648;
-  return { x: Math.round(clamp(LAMP.head - coneHalf(y) - CONE_SPREAD*1.3, PEN.x0 + 30, PEN.x1 - 30)), y };
-}
-let W = 390;                                   // design width; height is always 844
-let LAMP = { post: 300, head: 266, top: 292, base: 476 };
-let PEN  = { x0: 50, x1: 340, y0: 520, y1: 772 };
-let TRAY = { x: 268, y: 736 };
-let STARS = [], FAR = [], NEAR = [], RAIN = [], PUDDLE = [], CLOUD = [];
-const SPLASH = [], PING = [];
+let HILL = [], TFAR = [], TNEAR = [], BUSH = [], TUFT = [], FLOW = [], LOG = [], CLOUD = [], STARS = [];
+const PING = [], SPARK = [];
 
 function buildWorld(){
-  // centred: the cat's start, the dry patch and the fish are all measured off the lamp
-  LAMP = { post: Math.round(W*0.5) + 34, head: Math.round(W*0.5), top: 292, base: 476 };
-  CONE_SPREAD = Math.round(clamp(W*0.24, 92, 240));
-  PEN  = { x0: 54, x1: W - 54, y0: 520, y1: 778 };
-  TRAY = { x: Math.round(clamp(LAMP.head + CONE_SPREAD*0.45, 60, W - 60)), y: 736 };   // under the lamp, so she eats in the dry
+  const k = ps();
+  BED   = { x: Math.round(clamp(W*0.24, 86, W-86)), y: 648 };
+  DISH  = { x: Math.round(clamp(W*0.78, 70, W-70)), y: 694 };
+  SLOT  = { x: Math.round(clamp(W*0.77, 110, W-104)), y: HORIZON - 4 };
+  SUN0  = { x: Math.round(clamp(W*0.72, 80, W-76)), y: 150 };
+  MOON  = { x: Math.round(clamp(W*0.22, 60, W-60)), y: 162 };
+  PEN   = { x0: 54, x1: W - 54, y0: 520, y1: 800 };
+  FISH0 = { x: Math.round(clamp(W*0.19, 52, W-52)), y: 786 };
+  // out of the basket, but nowhere near the dish — she should not be standing on her dinner
+  OUT   = { x: Math.round(clamp(W*0.50, PEN.x0 + 50, PEN.x1 - 50)), y: 764 };
 
   STARS = [];
-  for(let i=0;i<Math.round(W/11);i++) STARS.push({ x: rnd(6,W-6), y: rnd(26,430), r: rnd(.6,1.7), p: rnd(0,7) });
+  for(let i=0;i<Math.round(W/9);i++) STARS.push({ x: rnd(4,W-4), y: rnd(18,430), r: rnd(.6,1.8), p: rnd(0,7) });
 
-  // two rows of rooftops: the far one hazy, the near one a hard silhouette
-  FAR = []; let x = -40;
-  while(x < W + 40){ const w = rnd(46,104), h = rnd(96,208); FAR.push([x, KERB-26-h, w, h]); x += w + rnd(2,16); }
-  NEAR = []; x = -30;
-  while(x < W + 30){ const w = rnd(54,120), h = rnd(70,186); NEAR.push([x, KERB-h, w, h]); x += w + rnd(1,10); }
+  HILL = [];
+  for(let i=0;i<4;i++) HILL.push({ x: rnd(-60, W+60), y: HORIZON + rnd(-6,10), rx: rnd(130,280), ry: rnd(46,92) });
 
-  RAIN = [];
-  for(let i=0;i<Math.round(W/4.4);i++) RAIN.push({ x: rnd(0,W), y: rnd(0,FLOOR), v: rnd(340,620), l: rnd(10,26) });
+  // two rows of conifers along the skyline: the far row pale, the near row a shade deeper
+  const gap = 56*k;                      // the notch the sun drops into: keep the near trees out of it
+  const clear = t => Math.abs(t.x - SLOT.x) > gap;
+  TFAR = []; let x = -24;
+  while(x < W + 24){ const w = rnd(17,30);
+                     TFAR.push({ x, y: HORIZON - rnd(-4,8), h: rnd(54,104)*(Math.abs(x-SLOT.x) > gap ? 1 : .42), w });
+                     x += w*rnd(.74,1.3); }
+  TNEAR = []; x = -18;
+  while(x < W + 18){ const w = rnd(22,40); const t = { x, y: HORIZON + rnd(4,24), h: rnd(46,96), w };
+                     if(clear(t)) TNEAR.push(t); x += w*rnd(.92,1.7); }
 
-  PUDDLE = [];
-  for(let i=0;i<Math.round(W/150)+4;i++){
-    const py = rnd(KERB+40, FLOOR-20);
-    PUDDLE.push({ x: rnd(20,W-20), y: py, rx: rnd(26,78), ry: rnd(4,11) });
-  }
+  BUSH = [];
+  for(let i=0;i<Math.round(W/58)+3;i++) BUSH.push({ x: rnd(10,W-10), y: rnd(HORIZON+26, FLOOR-30), r: rnd(11,24) });
+
+  TUFT = [];
+  for(let i=0;i<Math.round(W/13)+16;i++) TUFT.push({ x: rnd(0,W), y: rnd(HORIZON+18, FLOOR-6), s: rnd(.7,1.5) });
+
+  FLOW = [];
+  for(let i=0;i<Math.round(W/26)+7;i++) FLOW.push({ x: rnd(8,W-8), y: rnd(HORIZON+34, FLOOR-12), h: rnd(0,1) });
+
+  LOG = [];
+  LOG.push({ x: clamp(W*0.08, 34, W-34), y: 576, w: 46, kind: 'log' });
+  LOG.push({ x: clamp(W*0.92, 34, W-34), y: 602, w: 52, kind: 'log' });
+  LOG.push({ x: clamp(W*0.45, 30, W-30), y: 546, w: 22, kind: 'stump' });
 
   CLOUD = [];
-  for(let i=0;i<5;i++) CLOUD.push({ x: rnd(-200,W), y: rnd(60,330), w: rnd(180,420), h: rnd(34,78), v: rnd(3,9), o: rnd(.25,.6) });
+  for(let i=0;i<7;i++) CLOUD.push({ x: rnd(-200,W), y: rnd(40,276), w: rnd(80,200), h: rnd(22,48), v: rnd(2.5,7), o: rnd(.45,.9) });
 }
 
 function layout(){
   const r = (innerWidth || 390) / (innerHeight || 844);
-  W = clamp(Math.round(844 * r), 360, 2400);
+  W = clamp(Math.round(FLOOR * r), 360, 2400);
   svg.setAttribute('viewBox', `0 0 ${W} ${FLOOR}`);
-  $('roadClipRect').setAttribute('width', W);
   buildWorld();
-  // until someone touches her she belongs beside the shelter, wherever the lamp ended up
-  if(!S.touched){ const sp = startSpot(); S.cat.x = sp.x; S.cat.y = sp.y; }
+  if(!S.touched){ S.cat.x = BED.x; S.cat.y = BED.y - 12; S.sun.x = SUN0.x; S.sun.y = SUN0.y;
+                  S.fish.x = FISH0.x; S.fish.y = FISH0.y; }
   S.cat.x = clamp(S.cat.x, PEN.x0, PEN.x1);
-  S.fish.x = clamp(S.fish.x, 30, W-30);
-  cache.key = {};                                // force every cached layer to redraw
+  S.cat.y = clamp(S.cat.y, PEN.y0, PEN.y1);
+  if(!S.fish.inDish){ S.fish.x = clamp(S.fish.x, 30, W-30); }
+  else { S.fish.x = DISH.x; S.fish.y = DISH.y - 4; }
+  cache.key = {};
 }
 
 // ---- state -----------------------------------------------------------------
 const S = {
-  t: 0, day: 0.78,                               // midnight, and it stays there — this piece is a night piece
-  cat: { x: 96, y: 648, wake: 0, puff: 0, stretch: 0, face: 1, bob: 0 },   // out in the rain, looking toward the lamp
-  held: false, carrying: false, grabDX: 0, grabDY: 0, moved: 0,
-  fish: { out: false, held: false, x: 268, y: 736, left: 1 },
-  mode: 'rest', target: null, eat: 0, idle: 999, win: 0,   // idle starts high: she begins asleep
-  fishEaten: false,                                        // once she has had it, there is no more fish
-  drowsy: 1, touched: false, flick: 1, calm: 0,
-  hint: { step: 0, k: 0, spot: null, sawCarry: false, ping: 0, flare: 0 }   // the street's suggestion, nothing more
+  t: 0, night: 0,
+  cat: { x: 100, y: 664, wake: 0, puff: 0, stretch: 0, face: 1, bob: 0, purr: 0 },
+  sun: { x: 270, y: 176, set: false },
+  fish: { x: 190, y: 790, inDish: false, left: 1 },
+  drag: null,                       // { what:'cat'|'fish'|'sun', dx, dy, moved }
+  mode: 'rest', target: null, eat: 0, idle: 999,
+  fishEaten: false, strokes: 0, inBed: true,
+  touched: false,
+  hint: { step: 0, k: 0, ping: 0, flare: 0 }
 };
 const cache = { key: {}, html: {} };
 const once = (slot, key, make) => { if(cache.key[slot] !== key){ cache.key[slot] = key; $(slot).innerHTML = make(); } };
-
-const daylight = () => clamp(Math.sin(S.day * Math.PI * 2) * 2.1 + 0.08, 0, 1);
-const duskAmt  = () => { const d = daylight(); return clamp(1 - Math.abs(d - 0.40) / 0.40, 0, 1); };
+const N = () => S.night;
 
 // ---- sky -------------------------------------------------------------------
-function drawSky(d, dusk){
-  const C = CFG.colors, night = 1 - d;
+function drawSky(){
+  const n = N(), C = CFG.colors;
+  $('skyTop').setAttribute('stop-color', mix(C.skyDayTop, C.skyNightTop, n));
+  $('skyMid').setAttribute('stop-color', mix(C.skyDayMid, C.skyNightMid, n));
+  $('skyLow').setAttribute('stop-color', mix(C.skyDayLow, C.skyNightLow, n));
 
-  const top = mixA(C.skyNight, C.skyDay, d*0.58);
-  const mid = mixA(C.skyNight, C.skyDay, d);
-  const low = mixA(C.skyNight, C.skyDay, Math.min(1, d*1.32));
-  $('skyTop').setAttribute('stop-color', burn(top, C.dusk, dusk*0.07));
-  $('skyMid').setAttribute('stop-color', burn(mid, C.dusk, dusk*0.40));
-  $('skyLow').setAttribute('stop-color', burn(low, C.dusk, dusk*0.82));
-  PAL.sky  = mixA(C.skyNight, C.skyDay, d);
-  PAL.road = hex(burn(mixA(C.roadNight, C.roadDay, d), C.dusk, dusk*0.22).replace(/rgb\((\d+),(\d+),(\d+)\)/, (m,r,g,b)=>'#'+[r,g,b].map(v=>(+v).toString(16).padStart(2,'0')).join('')));
-  $('roadTop').setAttribute('stop-color', rgb(PAL.road.map(v=>v*0.82)));
-  $('roadBot').setAttribute('stop-color', rgb(PAL.road));
-
-  // the band of haze that pushes the far rooftops back
-  const hz = burn(mixA(C.skyNight, C.skyDay, Math.min(1, d*1.2)), C.dusk, dusk*.6);
-  $('hazeA').setAttribute('stop-color', hz); $('hazeA').setAttribute('stop-opacity', 0);
-  $('hazeB').setAttribute('stop-color', hz); $('hazeB').setAttribute('stop-opacity', (0.78*CFG.scene.depth).toFixed(2));
-
-  once('stars', `${W}|${Math.round(night*18)}`, () => night < .2 ? '' : STARS.map(s =>
+  $('stars').innerHTML = n < .12 ? '' : STARS.map(s =>
     `<circle cx="${s.x.toFixed(0)}" cy="${s.y.toFixed(0)}" r="${s.r.toFixed(1)}" fill="#fff"
-       opacity="${(((night-.2)/.8)*.85).toFixed(2)}"/>`).join(''));
+       opacity="${(n*(.3+Math.abs(Math.sin(S.t*.7+s.p))*.6)).toFixed(2)}"/>`).join('');
 
-  // one arc: the sun leads, the moon follows
-  const u = S.day % 1, up = u < .5 ? u*2 : (u-.5)*2, isSun = u < .5;
-  const cx = W*0.07 + W*0.86*up, cy = 320 - Math.sin(up*Math.PI)*196;
-  $('celestial').innerHTML = isSun
-    ? `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(120+dusk*60).toFixed(0)}" fill="url(#halo)" opacity="${(0.16+dusk*0.6).toFixed(2)}"/>
-       <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="30" fill="${burn(hex('#fff7e6'), CFG.colors.dusk, dusk*0.85)}"/>`
-    : `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="86" fill="#dce9f2" opacity="${(night*.05).toFixed(2)}" filter="url(#cloudy)"/>
-       <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="27" fill="#eef3f7"/>
-       <circle cx="${(cx+12).toFixed(1)}" cy="${(cy-8).toFixed(1)}" r="23"
-         fill="${burn(mixA(CFG.colors.skyNight, CFG.colors.skyDay, d), CFG.colors.dusk, dusk*0.5)}"/>`;
-
-  $('clouds').innerHTML = CFG.scene.cloud <= 0 ? '' : CLOUD.map(c =>
-    `<ellipse cx="${c.x.toFixed(0)}" cy="${c.y.toFixed(0)}" rx="${c.w/2}" ry="${c.h/2}" filter="url(#cloudy)"
-       fill="${burn(mixA('#1b2a36','#f2f6f4', d), CFG.colors.dusk, dusk*.55)}"
-       opacity="${(c.o*CFG.scene.cloud*(0.3+d*0.5)).toFixed(2)}"/>`).join('');
-
-  const farCol  = burn(mixA('#16252f','#9db3ae', d*.5), CFG.colors.dusk, dusk*.34);
-  const nearCol = burn(mixA('#030b11','#4a615d', d*.6),  CFG.colors.dusk, dusk*.22);
-  const sig = `${W}|${Math.round(d*26)}|${Math.round(dusk*16)}|${Math.floor(S.win/3.5)}`;
-  once('skylineFar',  sig, () => FAR.map(b => `<rect x="${b[0].toFixed(0)}" y="${b[1].toFixed(0)}" width="${b[2].toFixed(0)}" height="${b[3].toFixed(0)}" fill="${farCol}"/>`).join(''));
-  once('skylineNear', sig, () => NEAR.map(b => {
-    let w = '';
-    for(let r=0;r<Math.floor(b[3]/36);r++) for(let q=0;q<Math.floor(b[2]/28);q++){
-      const seed = (r*7 + q*13 + Math.round(b[0]));
-      const lit = ((seed + Math.floor(S.win/3.5) * ((seed % 3) === 0 ? 1 : 0)) % 5) < 2;
-      w += `<rect x="${(b[0]+9+q*28).toFixed(0)}" y="${(b[1]+16+r*36).toFixed(0)}" width="9" height="13"
-             fill="${CFG.colors.sodium}" opacity="${(lit ? (1-d)*.82 : (1-d)*.08).toFixed(2)}"/>`;
-    }
-    return `<rect x="${b[0].toFixed(0)}" y="${b[1].toFixed(0)}" width="${b[2].toFixed(0)}" height="${b[3].toFixed(0)}" fill="${nearCol}"/>
-      <rect x="${b[0].toFixed(0)}" y="${b[1].toFixed(0)}" width="${b[2].toFixed(0)}" height="3"
-        fill="${burn(mixA('#2c3c42','#e6efec', d), CFG.colors.dusk, dusk*.7)}" opacity="${(.2+d*.5).toFixed(2)}"/>${w}`;
-  }).join(''));
+  $('clouds').innerHTML = CLOUD.map(c => {
+    const col = mix('#FFFFFF', '#8C93C4', n);
+    return `<g opacity="${(c.o*(1-n*.45)*CFG.scene.cloud).toFixed(2)}" filter="url(#cloudy)">
+      <ellipse cx="${c.x.toFixed(0)}" cy="${c.y.toFixed(0)}" rx="${(c.w*.5).toFixed(0)}" ry="${(c.h*.5).toFixed(0)}" fill="${col}"/>
+      <ellipse cx="${(c.x-c.w*.22).toFixed(0)}" cy="${(c.y+c.h*.12).toFixed(0)}" rx="${(c.w*.3).toFixed(0)}" ry="${(c.h*.4).toFixed(0)}" fill="${col}"/>
+      <ellipse cx="${(c.x+c.w*.25).toFixed(0)}" cy="${(c.y+c.h*.1).toFixed(0)}" rx="${(c.w*.26).toFixed(0)}" ry="${(c.h*.36).toFixed(0)}" fill="${col}"/>
+    </g>`; }).join('');
 }
 
-// ---- street ----------------------------------------------------------------
-function drawStreet(d, dusk){
-  const night = 1 - d, lamp = clamp(night*1.55, 0, 1) * S.flick, C = CFG.colors;
-  const sway = Math.sin(S.t*0.55)*2.6 + Math.sin(S.t*1.6)*1.1;   // the lamp is on a pole, and it is windy
+// the sun and the moon, plus — during the fourth step only — the glow that says to take hold
+function drawCelestial(){
+  const n = N(), k = ps(), lit = STEPS[S.hint.step] === 'dusk' ? S.hint.k : 0;
+  const boost = 1 + S.hint.flare*1.2;
+  const breathe = .62 + .38*Math.sin(S.t*1.9);
+  const sr = 42*k, held = S.drag && S.drag.what === 'sun';
 
-  once('paving', `${W}|${Math.round(d*18)}`, () => {
-    let k = `<rect x="0" y="${KERB}" width="${W}" height="54" fill="#000" opacity="${(.12+d*.12).toFixed(2)}" filter="url(#soft)"/>
-      <rect x="0" y="${KERB}" width="${W}" height="9" fill="${mix(C.roadDay,'#ffffff',.3)}" opacity="${(.14+d*.3).toFixed(2)}"/>
-      <line x1="0" y1="${KERB}" x2="${W}" y2="${KERB}" stroke="${mix(C.roadDay,'#ffffff',.55)}" stroke-width="2" opacity="${(.3+d*.45).toFixed(2)}"/>
-      <line x1="0" y1="${KERB+9}" x2="${W}" y2="${KERB+9}" stroke="#000" stroke-width="2" opacity="${(.3+(1-d)*.25).toFixed(2)}"/>`;
-    for(let y = KERB+96; y < FLOOR; y += 96)
-      k += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#fff" stroke-width="1" opacity="${(.05+d*.07).toFixed(2)}"/>`;
-    for(let x = 56; x < W; x += 108)
-      k += `<line x1="${x}" y1="${KERB}" x2="${x}" y2="${FLOOR}" stroke="#fff" stroke-width="1" opacity="${(.04+d*.06).toFixed(2)}"/>`;
-    return k;
+  let s = '';
+  if(n < .995){
+    const ga = clamp(lit*breathe*boost*.95*CFG.scene.glowStrength, 0, 1);
+    const grab = lit > .02
+      ? `<circle cx="${S.sun.x.toFixed(1)}" cy="${S.sun.y.toFixed(1)}" r="${(sr*3.1).toFixed(0)}"
+           fill="url(#sunGlow)" opacity="${ga.toFixed(3)}"/>
+         <circle cx="${S.sun.x.toFixed(1)}" cy="${S.sun.y.toFixed(1)}" r="${(sr*1.62).toFixed(1)}"
+           fill="none" stroke="var(--glow)" stroke-width="${(3 + S.hint.flare*2).toFixed(1)}"
+           opacity="${(ga*.8).toFixed(3)}" filter="url(#soft)"/>
+         <circle cx="${S.sun.x.toFixed(1)}" cy="${S.sun.y.toFixed(1)}" r="${(sr*1.62).toFixed(1)}"
+           fill="none" stroke="var(--glow)" stroke-width="1.7" opacity="${(ga*.72).toFixed(3)}"/>` : '';
+    const bob = held ? 0 : Math.sin(S.t*1.6)*4.5*lit;
+    s += `${grab}
+      <circle cx="${S.sun.x.toFixed(1)}" cy="${(S.sun.y+bob).toFixed(1)}" r="${(sr*1.5).toFixed(0)}" fill="#FFE9A0" opacity="${(.30*(1-n)).toFixed(2)}" filter="url(#soft)"/>
+      <circle cx="${S.sun.x.toFixed(1)}" cy="${(S.sun.y+bob).toFixed(1)}" r="${sr.toFixed(0)}" fill="#FFF3B8" opacity="${(1-n*.6).toFixed(2)}"/>
+      <circle cx="${S.sun.x.toFixed(1)}" cy="${(S.sun.y+bob).toFixed(1)}" r="${(sr*.66).toFixed(0)}" fill="#FFFAE0" opacity="${(1-n*.5).toFixed(2)}"/>`;
+  }
+  if(n > .05){
+    const my = MOON.y + (1-n)*150;
+    s += `<circle cx="${MOON.x}" cy="${my.toFixed(0)}" r="${(sr*2.3).toFixed(0)}" fill="url(#moonGlow)" opacity="${n.toFixed(2)}"/>
+      <path d="M${MOON.x} ${(my-26*k).toFixed(1)} a${(26*k).toFixed(1)} ${(26*k).toFixed(1)} 0 1 0 ${(19*k).toFixed(1)} ${(46*k).toFixed(1)}
+               a${(31*k).toFixed(1)} ${(31*k).toFixed(1)} 0 1 1 ${(-19*k).toFixed(1)} ${(-46*k).toFixed(1)} Z"
+            fill="#F4F7FF" opacity="${n.toFixed(2)}"/>`;
+  }
+  $('celestial').innerHTML = s;
+}
+
+// ---- the field -------------------------------------------------------------
+function conifer(t, fill, trunk){
+  let s = `<rect x="${(t.x-2.2).toFixed(1)}" y="${(t.y-6).toFixed(1)}" width="4.4" height="10" fill="${trunk}"/>`;
+  for(let i=0;i<3;i++){
+    const u = i/2, base = t.y - t.h*(0.50 - u*0.50), hw = t.w*(0.40 + u*0.60)*0.5, top = base - t.h*0.44;
+    s += `<path d="M${(t.x-hw).toFixed(1)} ${base.toFixed(1)} L${t.x.toFixed(1)} ${top.toFixed(1)} L${(t.x+hw).toFixed(1)} ${base.toFixed(1)} Z" fill="${fill}"/>`;
+  }
+  return s;
+}
+
+function drawField(){
+  const n = N(), C = CFG.colors;
+  const key = Math.round(n*24);
+
+  $('groundTop').setAttribute('stop-color', mix(C.grassTop, C.grassNight, n));
+  $('groundBot').setAttribute('stop-color', mix(C.grassLow, dark(C.grassNight, .14), n));
+  $('ground').setAttribute('height', FLOOR - HORIZON + 10);
+
+  once('hills', key, () => HILL.map(h =>
+    `<ellipse cx="${h.x.toFixed(0)}" cy="${(h.y+h.ry*.52).toFixed(0)}" rx="${h.rx.toFixed(0)}" ry="${h.ry.toFixed(0)}"
+       fill="${mix(C.hill, dark(C.grassNight,.3), n)}"/>`).join(''));
+
+  once('treesFar', key, () => {
+    const f = mix(C.treeFar, dark(C.grassNight,.38), n), tr = mix('#B98E72', dark(C.grassNight,.5), n);
+    return TFAR.map(t => conifer(t, f, tr)).join('');
+  });
+  once('treesNear', key, () => {
+    const f = mix(C.treeNear, dark(C.grassNight,.52), n), tr = mix('#9A6F57', dark(C.grassNight,.6), n);
+    return TNEAR.map(t => conifer(t, f, tr)).join('');
   });
 
-  once('puddles', `${W}|${Math.round(d*18)}|${Math.round(lamp*12)}|${Math.round(CFG.scene.reflection*20)}`, () =>
-    PUDDLE.map(p => {
-      const near = clamp(1 - Math.abs(p.x - LAMP.head)/360, 0, 1) * lamp;
-      return `<ellipse cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" rx="${p.rx}" ry="${p.ry}"
-        fill="${rgb(blend(PAL.road, PAL.sky, .62))}"
-        opacity="${(.5 + CFG.scene.reflection*.4).toFixed(2)}" filter="url(#wet)"/>
-      <ellipse cx="${(p.x + p.rx*.2).toFixed(0)}" cy="${p.y.toFixed(0)}" rx="${(p.rx*.5).toFixed(0)}" ry="${(p.ry*.5).toFixed(1)}"
-        fill="${C.sodium}" opacity="${(near*.42).toFixed(2)}" filter="url(#wet)"/>`;
-    }).join(''));
+  once('decor', key + ':' + Math.round(CFG.scene.decor*10), () => {
+    if(CFG.scene.decor <= 0) return '';
+    const o = CFG.scene.decor;
+    const bush   = mix('#79C08C', dark(C.grassNight,.42), n);
+    const bushHi = mix('#96D3A1', dark(C.grassNight,.32), n);
+    const blade  = mix('#6FB782', dark(C.grassNight,.3), n);
+    const bark   = mix('#C08F6E', dark(C.grassNight,.42), n);
+    const barkHi = mix('#DBB08D', dark(C.grassNight,.34), n);
+    const petals = ['#FFF4F0', '#FFD9E2', '#FFF0B8'];
+    let s = '';
+    for(const b of BUSH) s += `<g opacity="${o}">
+      <ellipse cx="${b.x.toFixed(0)}" cy="${(b.y+b.r*.42).toFixed(0)}" rx="${(b.r*1.1).toFixed(0)}" ry="${(b.r*.3).toFixed(0)}" fill="#000" opacity=".07"/>
+      <circle cx="${(b.x-b.r*.5).toFixed(0)}" cy="${b.y.toFixed(0)}" r="${(b.r*.72).toFixed(0)}" fill="${bush}"/>
+      <circle cx="${(b.x+b.r*.5).toFixed(0)}" cy="${(b.y+b.r*.1).toFixed(0)}" r="${(b.r*.66).toFixed(0)}" fill="${bush}"/>
+      <circle cx="${b.x.toFixed(0)}" cy="${(b.y-b.r*.3).toFixed(0)}" r="${(b.r*.78).toFixed(0)}" fill="${bushHi}"/></g>`;
+    for(const l of LOG){
+      if(l.kind === 'log') s += `<g opacity="${o}">
+        <ellipse cx="${l.x.toFixed(0)}" cy="${(l.y+9).toFixed(0)}" rx="${(l.w*.6).toFixed(0)}" ry="6" fill="#000" opacity=".08"/>
+        <rect x="${(l.x-l.w*.5).toFixed(0)}" y="${(l.y-9).toFixed(0)}" width="${l.w}" height="18" rx="9" fill="${bark}"/>
+        <ellipse cx="${(l.x-l.w*.5).toFixed(0)}" cy="${l.y.toFixed(0)}" rx="5" ry="9" fill="${barkHi}"/>
+        <path d="M${(l.x-l.w*.2).toFixed(0)} ${(l.y-4).toFixed(0)} h${(l.w*.5).toFixed(0)} M${(l.x-l.w*.1).toFixed(0)} ${(l.y+3).toFixed(0)} h${(l.w*.4).toFixed(0)}"
+              stroke="${barkHi}" stroke-width="1.6" opacity=".7" stroke-linecap="round"/></g>`;
+      else s += `<g opacity="${o}">
+        <ellipse cx="${l.x.toFixed(0)}" cy="${(l.y+11).toFixed(0)}" rx="${(l.w*.9).toFixed(0)}" ry="5" fill="#000" opacity=".08"/>
+        <rect x="${(l.x-l.w*.5).toFixed(0)}" y="${(l.y-6).toFixed(0)}" width="${l.w}" height="17" rx="3" fill="${bark}"/>
+        <ellipse cx="${l.x.toFixed(0)}" cy="${(l.y-6).toFixed(0)}" rx="${(l.w*.5).toFixed(0)}" ry="5" fill="${barkHi}"/>
+        <ellipse cx="${l.x.toFixed(0)}" cy="${(l.y-6).toFixed(0)}" rx="${(l.w*.26).toFixed(0)}" ry="2.6" fill="none" stroke="${bark}" stroke-width="1.2" opacity=".6"/></g>`;
+    }
+    for(const t of TUFT) s += `<path d="M${t.x.toFixed(1)} ${t.y.toFixed(1)} q${(-3*t.s).toFixed(1)} ${(-7*t.s).toFixed(1)} ${(-1.5*t.s).toFixed(1)} ${(-10*t.s).toFixed(1)}
+        M${t.x.toFixed(1)} ${t.y.toFixed(1)} q0 ${(-8*t.s).toFixed(1)} ${(1.5*t.s).toFixed(1)} ${(-12*t.s).toFixed(1)}
+        M${t.x.toFixed(1)} ${t.y.toFixed(1)} q${(3*t.s).toFixed(1)} ${(-7*t.s).toFixed(1)} ${(4.5*t.s).toFixed(1)} ${(-9*t.s).toFixed(1)}"
+        stroke="${blade}" stroke-width="${(1.7*t.s).toFixed(1)}" fill="none" stroke-linecap="round" opacity="${(o*.85).toFixed(2)}"/>`;
+    for(const f of FLOW){ const col = mix(petals[Math.floor(f.h*3)%3], '#8FA4C8', n);
+      s += `<g opacity="${o}"><path d="M${f.x.toFixed(0)} ${f.y.toFixed(0)} v-7" stroke="${blade}" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="${f.x.toFixed(0)}" cy="${(f.y-9).toFixed(0)}" r="3.1" fill="${col}"/>
+        <circle cx="${f.x.toFixed(0)}" cy="${(f.y-9).toFixed(0)}" r="1.2" fill="${mix('#FFD17A','#C9B9E8',n)}"/></g>`; }
+    return s;
+  });
+}
 
-  // a faint sheen along the near edge, so the foreground is wet rather than empty
-  once('sheen', `${W}|${Math.round(d*18)}|${Math.round(lamp*10)}`, () =>
-    `<rect x="0" y="${FLOOR-230}" width="${W}" height="230"
-       fill="${rgb(blend(PAL.road, PAL.sky, .5))}" opacity="${(.28+d*.16).toFixed(2)}" filter="url(#soft)"/>`);
+// ---- the basket and the dish ------------------------------------------------
+function drawProps(){
+  const n = N(), k = ps(), C = CFG.colors;
+  const rx = 58*k, ry = 22*k;
+  const basket = mix(C.bed, dark(C.bed,.5), n), cush = mix(C.cushion, dark(C.cushion,.55), n);
+  const weave = mix(dark(C.bed,.22), dark(C.bed,.66), n);
 
-  const wob = Math.sin(S.t*1.2)*6;
-  $('wetwork').innerHTML = `
-    <ellipse cx="${(LAMP.head+sway*2.2).toFixed(1)}" cy="690" rx="${Math.min(W*0.62, 230)}" ry="162" fill="url(#pool)" opacity="${lamp.toFixed(2)}"/>
-    <path d="M${LAMP.head-9} ${LAMP.base} L${LAMP.head+9} ${LAMP.base}
-             L${(LAMP.head+70+wob).toFixed(1)} ${FLOOR} L${(LAMP.head-70+wob).toFixed(1)} ${FLOOR} Z"
-          fill="url(#lampSmear)" opacity="${(lamp*.5).toFixed(2)}" filter="url(#soft)"/>`;
+  $('bedBack').innerHTML = `
+    <ellipse cx="${BED.x}" cy="${(BED.y+ry*.72).toFixed(1)}" rx="${(rx*1.08).toFixed(1)}" ry="${(ry*.52).toFixed(1)}" fill="#000" opacity=".10"/>
+    <path d="M${(BED.x-rx).toFixed(1)} ${BED.y} a${rx.toFixed(1)} ${ry.toFixed(1)} 0 0 1 ${(rx*2).toFixed(1)} 0 Z" fill="${basket}"/>
+    <ellipse cx="${BED.x}" cy="${BED.y}" rx="${(rx*.9).toFixed(1)}" ry="${(ry*.68).toFixed(1)}" fill="${cush}"/>`;
 
-  const spread = CONE_SPREAD;
-  $('coneShape').setAttribute('d',
-    `M${LAMP.head-16} ${LAMP.top+8} L${LAMP.head+16} ${LAMP.top+8} L${LAMP.head+spread} ${FLOOR} L${LAMP.head-spread} ${FLOOR} Z`);
-  $('coneG').innerHTML = lamp < .04 ? '' :
-    `<path d="M${LAMP.head-16} ${LAMP.top+8} L${LAMP.head+16} ${LAMP.top+8} L${LAMP.head+spread} ${FLOOR} L${LAMP.head-spread} ${FLOOR} Z"
-       fill="url(#cone)" opacity="${(lamp*.68).toFixed(2)}" filter="url(#soft)"/>`;
+  $('bedFront').innerHTML = `
+    <path d="M${(BED.x-rx).toFixed(1)} ${BED.y} a${rx.toFixed(1)} ${(ry*1.25).toFixed(1)} 0 0 0 ${(rx*2).toFixed(1)} 0 Z" fill="${basket}"/>
+    <path d="M${(BED.x-rx*.72).toFixed(1)} ${(BED.y+ry*.5).toFixed(1)} q${(rx*.72).toFixed(1)} ${(ry*.5).toFixed(1)} ${(rx*1.44).toFixed(1)} 0"
+          fill="none" stroke="${weave}" stroke-width="${(2.2*k).toFixed(1)}" opacity=".55" stroke-linecap="round"/>
+    <path d="M${(BED.x-rx*.4).toFixed(1)} ${(BED.y+ry*.08).toFixed(1)} l0 ${(ry*.9).toFixed(1)}
+             M${BED.x} ${(BED.y+ry*.2).toFixed(1)} l0 ${(ry*1.0).toFixed(1)}
+             M${(BED.x+rx*.4).toFixed(1)} ${(BED.y+ry*.08).toFixed(1)} l0 ${(ry*.9).toFixed(1)}"
+          fill="none" stroke="${weave}" stroke-width="${(1.8*k).toFixed(1)}" opacity=".4" stroke-linecap="round"/>`;
 
-  if(CFG.scene.rain > 0 && lamp > .25){
-    const wet = CFG.scene.rain * (1 - S.calm*.78);          // it slackens off once she is settled
-    $('rainAll').innerHTML = RAIN.filter(r => dryness(r.x, r.y) < .5).map(r =>
-      `<line x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x-4).toFixed(1)}" y2="${(r.y+r.l).toFixed(1)}"
-         stroke="#cfe0e4" stroke-width="1" opacity="${(.17*lamp*wet).toFixed(2)}"/>`).join('');
-    $('rain').innerHTML = RAIN.filter(r => dryness(r.x, r.y) < .5).map(r =>
-      `<line x1="${r.x.toFixed(1)}" y1="${r.y.toFixed(1)}" x2="${(r.x-4).toFixed(1)}" y2="${(r.y+r.l).toFixed(1)}"
-         stroke="${C.sodium}" stroke-width="1.2" opacity="${(.32*lamp*wet).toFixed(2)}"/>`).join('');
-    $('splash').innerHTML = SPLASH.map(s =>
-      `<ellipse cx="${s.x.toFixed(0)}" cy="${s.y.toFixed(0)}" rx="${(2+s.a*10).toFixed(1)}" ry="${(0.6+s.a*3).toFixed(1)}"
-         fill="none" stroke="${C.sodium}" stroke-width="1" opacity="${((1-s.a)*.45*lamp*(1-S.calm*.78)).toFixed(2)}"/>`).join('');
-  } else { $('rain').innerHTML = ''; $('rainAll').innerHTML = ''; $('splash').innerHTML = ''; }
-
-  const metal = burn(mixA('#070f16','#445b57', d*.72), C.dusk, dusk*.24);
-  $('props').innerHTML = `
-    <g fill="none" stroke="${metal}" stroke-width="4.4" stroke-linecap="round">
-      <path d="M${LAMP.post} ${LAMP.base} V${LAMP.top+2}"/>
-      <path d="M${LAMP.post} ${LAMP.top+4} q0 -15 -17 -15 h${(-17+sway).toFixed(1)}"/>
-    </g>
-    <circle cx="${(LAMP.head+sway).toFixed(1)}" cy="${LAMP.top+4}" r="104" fill="url(#halo)" opacity="${(lamp*.95).toFixed(2)}"/>
-    <path d="M${(LAMP.head-15+sway).toFixed(1)} ${LAMP.top-5} h30 l-6 19 h-18 Z"
-          fill="${lamp > .22 ? C.sodium : metal}" opacity="${(0.45+lamp*.55).toFixed(2)}"/>
-    <g fill="${burn(mixA('#030a10','#3f5551', d*.6), C.dusk, dusk*.16)}" stroke="${metal}" stroke-width="3.4" stroke-linejoin="round">
-      <rect x="${Math.round(W*0.05)}" y="384" width="54" height="86" rx="6"/>
-      <path d="M${Math.round(W*0.05)+8} 384 v-14 h38 v14" fill="none"/>
-      <path d="M${Math.round(W*0.05)+13} 404 v50 M${Math.round(W*0.05)+27} 404 v50 M${Math.round(W*0.05)+41} 404 v50" stroke-width="2" opacity=".45"/>
-    </g>
-    <g stroke="${metal}" stroke-width="3" fill="none" opacity=".9">
-      <path d="M${Math.round(W*0.30)} 470 v-56 M${Math.round(W*0.30)+22} 470 v-56 M${Math.round(W*0.30)+44} 470 v-56"/>
-      <path d="M${Math.round(W*0.30)-8} 416 h60"/>
-    </g>`;
+  const dr = 30*k, dish = mix(C.dish, dark(C.dish,.56), n);
+  $('dish').innerHTML = `
+    <ellipse cx="${DISH.x}" cy="${(DISH.y+5*k).toFixed(1)}" rx="${(dr*1.05).toFixed(1)}" ry="${(dr*.34).toFixed(1)}" fill="#000" opacity=".10"/>
+    <ellipse cx="${DISH.x}" cy="${DISH.y}" rx="${dr.toFixed(1)}" ry="${(dr*.38).toFixed(1)}" fill="${dish}"/>
+    <ellipse cx="${DISH.x}" cy="${(DISH.y-1.5*k).toFixed(1)}" rx="${(dr*.72).toFixed(1)}" ry="${(dr*.26).toFixed(1)}"
+             fill="${mix(dark(C.dish,.12), dark(C.dish,.66), n)}"/>`;
 }
 
 // ---- the cat ---------------------------------------------------------------
 function bristles(x, y, k){
   if(k <= .03) return '';
-  let s = '';
-  for(let i=0;i<32;i++){
-    const a  = Math.PI*(1.16 + i/31*0.92);
-    const px = x + Math.cos(a)*54, py = y - 6 + Math.sin(a)*30;
-    const len = ((7 + Math.sin(i*1.9)*4.5)*k + Math.sin(i*2.7 + S.t*18)*2.2*k) * CFG.cat.bristle;
-    s += `<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}"
-            x2="${(px+Math.cos(a)*len).toFixed(1)}" y2="${(py-6+Math.sin(a)*len).toFixed(1)}"
-            stroke="var(--cat)" stroke-width="2.6" stroke-linecap="round"/>`;
+  // one zigzag along her back rather than a row of separate lines: separate lines
+  // read as a hairbrush standing beside her, a zigzag reads as her own fur lifting
+  const n = 26, pts = [];
+  for(let i=0;i<=n;i++){
+    const a = Math.PI*(1.04 + i/n*0.94);
+    const up = (i % 2) ? (7.5 + Math.sin(i*1.7)*3.2 + Math.sin(i*2.9 + S.t*15)*1.9) * k * CFG.cat.bristle : 0;
+    pts.push(`${(x + 4 + Math.cos(a)*(52+up)).toFixed(1)} ${(y - 2 + Math.sin(a)*(25+up)).toFixed(1)}`);
   }
-  return s;
+  return `<path d="M${pts.join(' L')}" fill="none" stroke="var(--cat)"
+            stroke-width="${(3.2 + k*1.8).toFixed(1)}" stroke-linejoin="round" stroke-linecap="round"/>`;
 }
 
-function drawCat(d){
-  const c = S.cat, k = c.puff, w = c.wake;
-  const sz = catScale();
-  const night = 1 - d;
-
-  // she is drawn facing left, so travelling right mirrors her — otherwise she walks backwards
+function drawCat(){
+  const c = S.cat, k = c.puff, w = c.wake, sz = catScale(), n = N();
+  const carried = S.drag && S.drag.what === 'cat' && S.drag.moved > 10;
   const tf = `translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) scale(${(-c.face*sz).toFixed(3)} ${sz}) translate(${(-c.x).toFixed(1)} ${(-c.y).toFixed(1)})`;
-
-  // out in the rain she trembles, and once awake she tips toward the dry light.
-  // this is the whole instruction for the carrying step — no marker, no words
-  const cold = (1 - dryness(c.x, c.y)) * (.35 + .65*w) * (S.held ? 0 : 1);
-  const shiv = cold * Math.sin(S.t*26) * 2.6;
-  const lean = cold * w * (LAMP.head > c.x ? 1 : -1) * 4.5;
-  const tfWet = `translate(${shiv.toFixed(2)} 0) rotate(${lean.toFixed(2)} ${c.x.toFixed(1)} ${(c.y+20).toFixed(1)}) ${tf}`;
-
-  $('catArt').setAttribute('transform', tfWet);
-  $('zzz').setAttribute('transform', tfWet);
+  // a stroke runs a shiver of pleasure down her: she leans into the hand
+  const purr = c.purr * Math.sin(S.t*22) * 1.6;
+  const tfAll = `translate(${purr.toFixed(2)} 0) ${tf}`;
+  $('catArt').setAttribute('transform', tfAll);
+  $('zzz').setAttribute('transform', `translate(${purr.toFixed(2)} 0)`);
   $('catShadow').setAttribute('transform', tf);
 
   const x = c.x, arch = Math.sin(c.stretch*Math.PI)*11;
   const y = c.y + c.bob - k*9 - arch;
   const twitch = Math.max(0, Math.sin(S.t*0.7)*Math.sin(S.t*2.3) - .86) * 26;
   const ears = k*3 + twitch;
-  const walking = S.mode === 'walk', carried = S.carrying, eating = S.mode === 'eat';
-  const sitting = !walking && !carried && !eating && w > .62 && k < .25;   // a fright keeps her low and bristling
+  const walking = S.mode === 'walk' || S.mode === 'run', eating = S.mode === 'eat';
+  const sitting = !walking && !carried && !eating && w > .62 && k < .25;
   const upright = walking || carried || sitting;
 
   $('catShadow').innerHTML = `<ellipse cx="${x}" cy="${(c.y+22).toFixed(1)}"
-      rx="${(upright?32:48)+k*8}" ry="8" fill="#000" opacity="${carried ? '.10' : (.22+night*.14).toFixed(2)}"/>`;
+      rx="${(upright?32:48)+k*8}" ry="8" fill="#000" opacity="${carried ? '.08' : (.20+n*.10).toFixed(2)}"/>`;
 
   let body, hx, hy;
   if(carried){
@@ -319,14 +332,15 @@ function drawCat(d){
             stroke="var(--cat)" stroke-width="5" stroke-linecap="round"/>`;
   } else if(eating){
     const nib = Math.sin(S.t*7.5)*2.2, tw = Math.sin(S.t*3.1)*7;
-    hx = x - 30; hy = y - 7 + nib;                    // head down and forward, over the fish
+    hx = x - 30; hy = y - 7 + nib;
     body = `<path d="M${x+24} ${y+12} q${(26+tw).toFixed(1)} 5 ${(18+tw*.5).toFixed(1)} -13"
               fill="none" stroke="var(--cat)" stroke-width="7" stroke-linecap="round"/>
       <path d="M${x-34} ${y+16} q-7 -29 18 -34 q30 -6 38 14 q8 22 -8 24 Z" fill="var(--cat)"/>`;
   } else if(sitting){
     const tw = Math.sin(S.t*2.1)*9;
     hx = x - 4; hy = y - 36;
-    body = `<path d="M${x+22} ${y+14} q${(28+tw).toFixed(1)} 7 ${(20+tw*.5).toFixed(1)} -15"
+    body = `${bristles(x,y,k)}
+      <path d="M${x+22} ${y+14} q${(28+tw).toFixed(1)} 7 ${(20+tw*.5).toFixed(1)} -15"
               fill="none" stroke="var(--cat)" stroke-width="7" stroke-linecap="round"/>
       <path d="M${x-24} ${y+16} q-6 -38 16 -44 q28 -8 36 18 q7 24 -7 26 Z" fill="var(--cat)"/>`;
   } else {
@@ -341,19 +355,20 @@ function drawCat(d){
   const hr = (walking || sitting) ? 19 : (eating ? 17 : 18);
   const blink = Math.sin(S.t*0.83) > .988 || Math.sin(S.t*1.41 + 2) > .991;
   const open = (walking || sitting || eating || w > .3 || k > .25) && !(blink && k < .3);
-  const eyeCol = '#eaf1ee';          // nothing on her glows: she stays a silhouette
-  const two = walking || sitting;   // both eyes show in the three-quarter poses
-  const eye = open
+  const eyeCol = '#eaf1ee';
+  const two = walking || sitting;
+  // while she is being stroked she shuts her eyes and enjoys it
+  const bliss = c.purr > .25;
+  const eye = (open && !bliss)
     ? `<circle cx="${hx-8}" cy="${hy-2}" r="${(2.4+k*2.2).toFixed(1)}" fill="${eyeCol}"/>${two?`<circle cx="${hx+8}" cy="${hy-2}" r="2.4" fill="${eyeCol}"/>`:''}`
-    : `<path d="M${hx-13} ${hy-1} q5 4 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
+    : `<path d="M${hx-13} ${hy-1} q5 ${bliss?-4:4} 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>${
+        two?`<path d="M${hx+3} ${hy-1} q5 ${bliss?-4:4} 10 0" fill="none" stroke="${eyeCol}" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>`:''}`;
 
-  // Three whiskers on each cheek, mirrored about the muzzle: same count, same lengths,
-  // same angles on both sides.
   const wfan = (side, len) => `
       <path d="M${(hx+side*4).toFixed(1)} ${(hy+6).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(-3-k*5).toFixed(1)} ${(side*len).toFixed(1)} ${(-7-k*9).toFixed(1)}"/>
       <path d="M${(hx+side*5).toFixed(1)} ${(hy+9).toFixed(1)} q${(side*len*.52).toFixed(1)} 1 ${(side*len*1.04).toFixed(1)} ${(1+k*1).toFixed(1)}"/>
       <path d="M${(hx+side*4).toFixed(1)} ${(hy+12).toFixed(1)} q${(side*len*.5).toFixed(1)} ${(4+k*3).toFixed(1)} ${(side*len).toFixed(1)} ${(9+k*7).toFixed(1)}"/>`;
-  const whiskers = `<g fill="none" stroke="#cfdcd7" stroke-width="1.15" stroke-linecap="round"
+  const whiskers = `<g fill="none" stroke="${mix('#3D4A4F','#cfdcd7',n)}" stroke-width="1.15" stroke-linecap="round"
       opacity="${(.5+k*.4).toFixed(2)}">${wfan(-1, 15+k*6)}${wfan(1, 15+k*6)}</g>`;
 
   $('catArt').innerHTML = `${body}
@@ -364,280 +379,292 @@ function drawCat(d){
     <path d="M${hx} ${hy+6} l-3 3 l3 2 l3 -2 Z" fill="${eyeCol}" opacity=".75"/>
     ${whiskers}`;
 
-  const B = c.y + 22, squash = 0.55;
-  const ref = $('catRef');
-  ref.setAttribute('transform', `translate(0 ${(B*(1+squash)).toFixed(1)}) scale(1 ${-squash})`);
-  ref.setAttribute('opacity', (CFG.scene.reflection * (0.4 + night*0.6)).toFixed(2));
-
   if(!carried && S.mode === 'rest' && w < .12 && k < .1){
     let z = '';
     for(let i=0;i<3;i++){ const p = ((S.t*.35 + i*.33) % 1);
-      z += `<text x="${(x+36+p*24).toFixed(0)}" y="${(y-32-p*62).toFixed(0)}" font-family="Fraunces, Georgia, serif"
-              font-size="${13+i*5}" fill="${d > .45 ? '#2b4440' : '#d8e4e0'}"
-              opacity="${((1-p)*.62).toFixed(2)}">z</text>`; }
+      z += `<text x="${(x+46*sz+p*26).toFixed(0)}" y="${(y-54-p*62).toFixed(0)}" font-family="Fraunces, Georgia, serif"
+              font-size="${13+i*5}" font-style="italic" fill="${mix('#33514a','#d8e4e0',n)}"
+              opacity="${((1-p)*.6).toFixed(2)}">z</text>`; }
     $('zzz').innerHTML = z;
   } else $('zzz').innerHTML = '';
 }
 
 // ---- the fish --------------------------------------------------------------
+const fishShown = () => STEPS[S.hint.step] === 'feed' || (S.fish.inDish && !S.fishEaten);
+
 function drawFish(){
-  const f = S.fish;
-  const x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y, w = f.out ? f.left : (S.fishEaten ? 0 : 1);
-  const wob = f.held ? Math.sin(S.t*9)*6 : Math.sin(S.t*1.6)*1.6;
-  $('fish').innerHTML = w <= .02 ? '' : `
-    <g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${(.6+w*.5).toFixed(2)})">
-      <path d="M-17 0 q10 -13 22 0 q-12 13 -22 0 Z" fill="${CFG.colors.sodium}" opacity=".92"/>
-      <path d="M-17 0 l-12 -9 v18 Z" fill="${CFG.colors.sodium}" opacity=".75"/>
-      <circle cx="-1" cy="-2" r="1.9" fill="var(--cat)"/>
+  const f = S.fish, k = ps();
+  if(!fishShown() || f.left <= .02){ $('fish').innerHTML = ''; return; }
+  const held = S.drag && S.drag.what === 'fish';
+  const wob = held ? Math.sin(S.t*9)*7 : Math.sin(S.t*1.6)*2.2;
+  const lift = held ? -6 : 0;
+  $('fish').innerHTML = `
+    <ellipse cx="${f.x.toFixed(1)}" cy="${(f.y+13).toFixed(1)}" rx="${(24*k).toFixed(1)}" ry="${(6*k).toFixed(1)}" fill="#000" opacity="${held ? '.14' : '.10'}"/>
+    <g transform="translate(${f.x.toFixed(1)} ${(f.y+lift).toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${((.95+f.left*.5)*k).toFixed(2)})">
+      <path d="M-17 0 q10 -14 23 0 q-13 14 -23 0 Z" fill="${CFG.colors.fish}"/>
+      <path d="M-17 0 l-13 -10 v20 Z" fill="${CFG.colors.fish}" opacity=".8"/>
+      <path d="M-6 -5 q8 -4 13 1" fill="none" stroke="#FFD9A8" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+      <circle cx="0" cy="-2" r="1.9" fill="var(--cat)"/>
     </g>`;
-  $('fishRef').innerHTML = (!f.out || w <= .02) ? '' : `
-    <g transform="translate(${x.toFixed(1)} ${(y+14).toFixed(1)}) scale(${(.6+w*.5).toFixed(2)} ${(-(.6+w*.5)*.5).toFixed(2)})" filter="url(#wet)">
-      <path d="M-17 0 q10 -13 22 0 q-12 13 -22 0 Z" fill="${CFG.colors.sodium}"/></g>`;
-  $('fishRef').setAttribute('opacity', f.out ? (CFG.scene.reflection*0.8).toFixed(2) : '0');
-  $('tray').innerHTML = (f.out || S.fishEaten) ? '' : `
-    <circle cx="${TRAY.x}" cy="${TRAY.y}" r="30" fill="none" stroke="${CFG.colors.sodium}"
-            stroke-width="1.6" stroke-dasharray="3 7" opacity="${(.4+Math.sin(S.t*1.8)*.2).toFixed(2)}"/>`;
-  $('ping').innerHTML = PING.map(q =>
-    `<ellipse cx="${q.x.toFixed(0)}" cy="${q.y.toFixed(0)}" rx="${(10+q.a*44).toFixed(0)}" ry="${(3+q.a*14).toFixed(0)}"
-       fill="none" stroke="${daylight() > .45 ? '#22383a' : CFG.colors.sodium}" stroke-width="1.8"
-       opacity="${((1-q.a)*.6).toFixed(2)}"/>`).join('');
 }
 
-// ---- the nudge -------------------------------------------------------------
-// One thing at a time. The street lights what to touch next and she looks at it, and
-// only that one thing answers — touch anything else and the suggestion flares instead.
-// wake -> carry -> feed -> done, and at done she lies back down and it is over.
-const STEPS = ['wake', 'walk', 'feed', 'done'];
-const HINT_WAIT = 2.6;          // seconds of nobody doing anything before the street says anything
+// ---- the sequence ----------------------------------------------------------
+// out -> feed -> groom -> dusk -> bed -> done.  Exactly one object answers at a time.
+const STEPS = ['out', 'feed', 'groom', 'dusk', 'bed', 'done'];
+const WANT  = { out: 'cat', feed: 'fish', groom: 'cat', dusk: 'sun', bed: 'cat' };
 
-function hintTarget(){
-  const c = S.cat, f = S.fish;
+// what is lit, and where it should go. the bright one is what to take hold of;
+// the faint one is where to put it. groom has no destination, so it has only the one.
+function hintTargets(){
+  const c = S.cat, f = S.fish, k = ps();
   switch(STEPS[S.hint.step]){
-    case 'wake':  return { x: c.x, y: c.y + 28, r: 172, glow: 1, dim: .66, moon: true };
-    case 'walk':  return S.hint.spot;           // the dry ground under the lamp
-    case 'feed':  return { x: f.out ? f.x : TRAY.x, y: (f.out ? f.y : TRAY.y) + 8, r: 60, glow: 1, dim: .22 };
-    default:      return null;
+    case 'out':   return { grab: { x: BED.x, y: BED.y + 10, r: 118*k }, drop: { x: OUT.x,  y: OUT.y,  r: 82*k } };
+    case 'feed':  return { grab: { x: f.x, y: f.y + 10, r: 72*k },  drop: { x: DISH.x, y: DISH.y, r: 66*k } };
+    case 'groom': return { grab: { x: c.x, y: c.y + 20, r: 102*k }, drop: null };
+    case 'dusk':  return { grab: null, drop: { x: SLOT.x, y: SLOT.y + 8, r: 86*k } };   // the sun's own glow is drawn in the sky
+    case 'bed':   return { grab: { x: c.x, y: c.y + 20, r: 102*k }, drop: { x: BED.x, y: BED.y + 8, r: 104*k } };
+    default:      return { grab: null, drop: null };
   }
+}
+
+function advance(){
+  S.hint.step = Math.min(S.hint.step + 1, STEPS.length - 1);
+  S.hint.k = 0; S.hint.ping = 0; S.hint.flare = 0; S.idle = 0;
 }
 
 function hintThink(dt){
   const h = S.hint, step = STEPS[h.step];
 
-  const advance = () => { h.step = Math.min(h.step + 1, STEPS.length - 1);
-                          h.k = 0; h.spot = null; h.sawCarry = false; h.ping = 0; h.flare = 0; };
+  // completions that happen on their own, rather than on release
+  if(step === 'feed' && S.fishEaten) advance();
+  else if(step === 'groom' && S.strokes >= CFG.cat.strokes) advance();
+  else if(step === 'dusk' && S.sun.set && S.night > .97) advance();
 
+  const want = (S.idle > CFG.scene.hintWait && step !== 'done') ? 1 : 0;
+  h.k += (want - h.k) * Math.min(1, dt * (want ? 1.5 : 3.4));
   h.flare = Math.max(0, h.flare - dt*1.5);
 
-  // read what she is already doing — the input handlers are not touched
-  if(step === 'wake' && S.cat.puff > .5) advance();
-  else if(step === 'walk'){
-    // send her anywhere you like; the step is done when she is actually out of the rain
-    if(S.mode === 'rest' && !S.held && sheltered(S.cat.x, S.cat.y)) advance();
-  }
-  else if(step === 'feed' && S.fishEaten) advance();
-
-  // there is only one dry place on this street and the lamp already made it
-  if(STEPS[h.step] === 'walk' && !h.spot){
-    // left of the lamp's centre, so she does not land on top of the fish tray
-    h.spot = { x: clamp(LAMP.head - CONE_SPREAD*0.22, PEN.x0 + 46, PEN.x1 - 46),
-               y: clamp(686, PEN.y0, PEN.y1), r: 96, glow: .35, dim: .20 };
-  }
-
-  S.calm += ((STEPS[h.step] === 'done' ? 1 : 0) - S.calm) * Math.min(1, dt*.5);
-
-  const settled = S.idle > HINT_WAIT && !S.held && !S.fish.held
-                  && S.mode !== 'walk' && S.mode !== 'run' && S.mode !== 'eat';
-  const want = (STEPS[h.step] === 'done' || !settled) ? 0 : 1;
-  h.k += (want - h.k) * Math.min(1, dt*2.2);
-
-  // now that the step is a click, the street can say "here" in its own words: the very ring
-  // that appears wherever you send her
-  if(STEPS[h.step] === 'walk' && h.k > .5 && h.spot){
+  if(h.k > .5){
     h.ping += dt;
-    if(h.ping > 2.2){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }
-  }
-
-  // she looks at whatever the street is pointing out
-  const t = hintTarget();
-  if(t && h.k > .35 && S.mode === 'rest' && !S.held && Math.abs(t.x - S.cat.x) > 26)
-    S.cat.face = t.x < S.cat.x ? -1 : 1;
-}
-
-function drawHint(d){
-  const g = $('hintG'), dim = $('hintDimRect'), grad = $('hintDim');
-  const h = S.hint, t = hintTarget();
-  if(!t || h.k < .012){
-    if(g.innerHTML) g.innerHTML = '';
-    if(dim.getAttribute('opacity') !== '0') dim.setAttribute('opacity', '0');
-    return;
-  }
-  const breathe = .62 + .38*Math.sin(S.t*1.5);
-
-  // the street goes quiet everywhere but here — the lamp already owns most of the road,
-  // so the only way to point at something is to take the light off everything else
-  grad.setAttribute('cx', t.x.toFixed(1));
-  grad.setAttribute('cy', t.y.toFixed(1));
-  grad.setAttribute('r',  (t.r * 2.7 * (1 + .04*Math.sin(S.t*1.5))).toFixed(1));
-  const boost = 1 + h.flare * 1.15;                 // you touched the wrong thing: say it louder
-  const dk = t.dim || .34;
-  dim.setAttribute('opacity', Math.min(.74, h.k * (dk + dk*.47*breathe) * boost).toFixed(3));
-
-  // and a little warmth underneath, for the steps where the target is bare road
-  const a = Math.min(1, h.k * breathe * clamp(.4 + (1-d)*.8, .4, 1) * .85 * (t.glow || 1) * boost);
-  const r = t.r * (1 + .06*Math.sin(S.t*1.5));
-  // a black cat gains nothing from the street going dark — she needs the ground under her lit.
-  // the moon is already up there, so the pale pool has somewhere to have come from
-  const paint = t.moon ? 'moonPool' : 'pool';
-  g.innerHTML = `<ellipse cx="${t.x.toFixed(1)}" cy="${t.y.toFixed(1)}" `
-              + `rx="${r.toFixed(1)}" ry="${(r*0.46).toFixed(1)}" `
-              + `fill="url(#${paint})" opacity="${a.toFixed(3)}"/>`
-              + (t.moon ? `<ellipse cx="${t.x.toFixed(1)}" cy="${t.y.toFixed(1)}" `
-                        + `rx="${(r*.52).toFixed(1)}" ry="${(r*.24).toFixed(1)}" `
-                        + `fill="url(#moonPool)" opacity="${(a*.8).toFixed(3)}"/>` : '');
-}
-
-// only the step's own input answers; everything else makes the suggestion flare
-function allows(what){
-  switch(STEPS[S.hint.step]){
-    case 'wake':  return what === 'cat';                        // she is asleep: wake her
-    case 'walk':  return what === 'street';                     // click where she should go
-    case 'feed':  return what === 'fish';
-    default:      return false;                                 // done
+    if(h.ping > 2.1){ h.ping = 0;
+      const t = hintTargets();
+      if(t.drop) PING.push({ x: t.drop.x, y: t.drop.y, a: 0 });
+    }
   }
 }
 
+function allows(what){ return WANT[STEPS[S.hint.step]] === what; }
+
+// touching the wrong thing is never an error: the current suggestion simply comes up louder
 function reject(){
-  const h = S.hint;
-  h.flare = 1;
-  S.idle = HINT_WAIT + 1;            // show it now rather than after the usual pause
-  h.k = Math.max(h.k, .55);
-  if(STEPS[h.step] === 'walk' && h.spot){ h.ping = 0; PING.push({ x: h.spot.x, y: h.spot.y, a: 0 }); }   // one ripple, only when you ask
+  S.hint.flare = 1;
+  S.hint.k = Math.max(S.hint.k, .62);
+  S.idle = CFG.scene.hintWait + 1;
+  const t = hintTargets();
+  if(t.drop){ S.hint.ping = 0; PING.push({ x: t.drop.x, y: t.drop.y, a: 0 }); }
 }
 
-// ---- behaviour -------------------------------------------------------------
+function drawHint(){
+  const h = S.hint, t = hintTargets();
+  const breathe = .60 + .40*Math.sin(S.t*1.9);
+  const boost = (1 + h.flare*1.25) * CFG.scene.glowStrength;
+  let s = '';
+  // a wash of warm light alone disappears on pale grass, so every suggestion is a pool
+  // with a rim: the pool says "warm here", the rim draws the eye to an actual edge
+  const pool = (p, strength) => {
+    const a = clamp(h.k * breathe * strength * boost, 0, 1);
+    if(a < .01) return '';
+    const rr = p.r*0.66;
+    return `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${(p.r*1.15).toFixed(1)}" ry="${(p.r*0.48).toFixed(1)}"
+              fill="url(#glowPool)" opacity="${a.toFixed(3)}"/>
+            <ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${rr.toFixed(1)}" ry="${(rr*0.42).toFixed(1)}"
+              fill="none" stroke="var(--glow)" stroke-width="${(2.6+h.flare*2).toFixed(1)}"
+              opacity="${(a*.85).toFixed(3)}" filter="url(#soft)"/>
+            <ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${rr.toFixed(1)}" ry="${(rr*0.42).toFixed(1)}"
+              fill="none" stroke="var(--glow)" stroke-width="1.6" opacity="${(a*.7).toFixed(3)}"/>`;
+  };
+  if(t.drop) s += pool(t.drop, STEPS[h.step] === 'dusk' ? 1.05 : .62);   // where it goes: quieter
+  if(t.grab) s += pool(t.grab, 1.0);        // what to take: louder
+  $('hintG').innerHTML = s;
+
+  // a ring opening out of the destination, so a still picture still says "here"
+  $('ping').innerHTML = PING.map(q =>
+    `<ellipse cx="${q.x.toFixed(0)}" cy="${q.y.toFixed(0)}" rx="${(14+q.a*62).toFixed(0)}" ry="${(5+q.a*26).toFixed(0)}"
+       fill="none" stroke="var(--glow)" stroke-width="${(2.6*(1-q.a)+.6).toFixed(1)}"
+       opacity="${((1-q.a)*.62*boost).toFixed(2)}"/>`).join('');
+
+  $('sparkle').innerHTML = SPARK.map(k =>
+    `<g transform="translate(${k.x.toFixed(1)} ${(k.y - k.a*44).toFixed(1)}) scale(${(1-k.a*.4).toFixed(2)})" opacity="${((1-k.a)*.9).toFixed(2)}">
+       <path d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6 Z" fill="var(--glow)"/></g>`).join('');
+}
+
+// ---- the five dots ----------------------------------------------------------
+function drawDots(){
+  const n = N(), total = STEPS.length - 1, done = S.hint.step;
+  const on = mix('#2E3D55', '#F4F8FF', n), off = mix('#2E3D55', '#F4F8FF', n);
+  const gap = 15, x0 = W/2 - (total-1)*gap/2;
+  let s = '';
+  for(let i=0;i<total;i++){
+    const isDone = i < done, isNow = i === done;
+    const pulse = isNow ? .58 + .34*Math.sin(S.t*2.4) : 0;
+    s += `<circle cx="${(x0+i*gap).toFixed(1)}" cy="34" r="${(isNow ? 4.6 : 4).toFixed(1)}"
+            fill="${isDone ? on : off}" opacity="${(isDone ? .92 : isNow ? pulse : .24).toFixed(2)}"/>`;
+  }
+  $('dots').innerHTML = s;
+}
+
+// ---- motion ----------------------------------------------------------------
 function think(dt){
-  const c = S.cat, M = CFG.motion, d = daylight();
+  const c = S.cat, M = CFG.motion, step = STEPS[S.hint.step];
+  S.idle += dt;
+  const dragging = !!S.drag;
+  if(dragging) S.idle = 0;
 
-  S.idle += dt;                       // time since you last did anything to her
+  // the sun: held, it drags the daylight down with it; let go anywhere but the notch
+  // and it simply floats back up, and the morning comes back with it
+  if(S.drag && S.drag.what === 'sun'){
+    S.night = clamp((S.sun.y - SUN0.y) / Math.max(40, SLOT.y - SUN0.y), 0, 1) * .93;
+  } else if(S.sun.set){
+    S.sun.y = lerp(S.sun.y, SLOT.y + 30, Math.min(1, dt*2.2));
+    S.sun.x = lerp(S.sun.x, SLOT.x, Math.min(1, dt*2.2));
+    S.night = clamp(S.night + dt*M.duskSpeed, 0, 1);
+  } else if(step === 'dusk'){
+    // let go anywhere but the notch and it floats back up, and the morning comes back with it
+    S.sun.x = lerp(S.sun.x, SUN0.x, Math.min(1, dt*1.8));
+    S.sun.y = lerp(S.sun.y, SUN0.y, Math.min(1, dt*1.8));
+    S.night = clamp(S.night - dt*1.1, 0, 1);
+  }
 
-  if(S.held){ S.mode = 'held'; S.idle = 0; }
-  else if(S.fish.out && !S.fish.held && S.fish.left > .02 && S.mode !== 'eat'){
-    // she comes right up to it, close enough that lowering her head reaches it
+  // she goes for the fish once it is actually in the dish
+  if(S.fish.inDish && !S.fishEaten && S.mode !== 'eat' && !dragging){
     const side = S.fish.x > W*0.5 ? -1 : 1;
-    // stand off by her own head-length, or she ends up lying on top of the fish
-    S.mode = 'run'; S.target = { x: clamp(S.fish.x + side*64*catScale(), PEN.x0, PEN.x1),
-                                 y: clamp(S.fish.y, PEN.y0, PEN.y1) };
+    S.mode = 'run';
+    S.target = { x: clamp(S.fish.x + side*62*catScale(), PEN.x0, PEN.x1),
+                 y: clamp(S.fish.y - 6, PEN.y0, PEN.y1) };
   }
 
   if((S.mode === 'walk' || S.mode === 'run') && S.target){
     const dx = S.target.x - c.x, dy = S.target.y - c.y, dd = Math.hypot(dx, dy);
-    // going for the fish she keeps her eyes on it — the approach can step her backwards
-    // past it, and facing the way her feet happen to be moving turns her away from her food
-    if(S.mode === 'run' && S.fish.out) c.face = S.fish.x < c.x ? -1 : 1;
+    if(S.mode === 'run' && S.fish.inDish) c.face = S.fish.x < c.x ? -1 : 1;
     else if(dd > 4) c.face = dx < 0 ? -1 : 1;
-    if(dd < 6){ S.mode = (S.fish.out && S.fish.left > .02) ? 'eat' : 'rest';
-                if(S.mode === 'eat') c.face = S.fish.x < c.x ? -1 : 1;
-                S.eat = CFG.cat.appetite; S.target = null; if(S.mode === 'rest') c.stretch = 1; }
-    else { const v = (S.mode === 'run' ? M.runSpeed : M.walkSpeed)*dt; c.x += dx/dd*v; c.y += dy/dd*v; }
+    if(dd < 6){
+      S.mode = (S.fish.inDish && S.fish.left > .02) ? 'eat' : 'rest';
+      if(S.mode === 'eat') c.face = S.fish.x < c.x ? -1 : 1;
+      S.eat = CFG.cat.appetite; S.target = null; if(S.mode === 'rest') c.stretch = 1;
+    } else { const v = (S.mode === 'run' ? M.runSpeed : M.walkSpeed)*dt; c.x += dx/dd*v; c.y += dy/dd*v; }
   }
 
   if(S.mode === 'eat'){
     S.eat -= dt;
     S.fish.left = clamp(S.eat / CFG.cat.appetite, 0, 1);
-    if(S.eat <= 0){ S.fish.out = false; S.fish.left = 0; S.fishEaten = true;   // that was the only one
-                    S.mode = 'rest'; c.stretch = 1; }
-  }
-
-  // she is awake while something is happening, and for CFG.motion.sleepAfter seconds after it
-  const busy  = S.held || S.mode === 'walk' || S.mode === 'run' || S.mode === 'eat' || c.puff > .3;
-  // the sequence owns her sleep: down before it starts, up while it runs, down again at the end
-  const seq   = STEPS[S.hint.step];
-  const awake = (seq === 'wake' || seq === 'done') ? busy : true;
-  c.wake = awake ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
-
-  if(!S.held) c.puff = clamp(c.puff - dt*2.4, 0, 1);
-  if(c.stretch > 0 && !S.held) c.stretch = Math.max(0, c.stretch - dt*2.4);
-  c.bob = Math.sin(S.t * (c.wake > .5 ? 3.2 : 1.1)) * (c.wake > .5 ? 1.4 : 2.6);
-
-  S.flick = 1 - Math.max(0, Math.sin(S.t*2.3)*Math.sin(S.t*7.9) - .74) * .45 * CFG.scene.lampFlicker;
-
-  for(const cl of CLOUD){ cl.x += cl.v*dt*CFG.scene.cloud; if(cl.x - cl.w > W) cl.x = -cl.w; }
-
-  S.win += dt;
-
-  for(let i=PING.length-1;i>=0;i--){ PING[i].a += dt*1.6; if(PING[i].a >= 1) PING.splice(i,1); }
-
-  if(CFG.scene.rain > 0) for(const r of RAIN){
-    r.y += r.v*dt; r.x -= r.v*dt*0.11;
-    if(r.y > FLOOR){
-      // they land where it is still raining — so a ring of them gathers at the edge of the light
-      if(SPLASH.length < 26 && dryness(r.x, FLOOR - 20) < .5 && Math.abs(r.x - LAMP.head) < 300)
-        SPLASH.push({ x: r.x, y: rnd(KERB+30, FLOOR-6), a: 0 });
-      r.y = rnd(240, 330); r.x = rnd(0, W + 60);
+    if(S.eat <= 0){
+      S.fish.left = 0; S.fishEaten = true; S.mode = 'rest'; c.stretch = 1;
+      c.puff = 1;                                     // full, pleased, and standing on end
     }
   }
-  for(let i=SPLASH.length-1;i>=0;i--){ SPLASH[i].a += dt*2.2; if(SPLASH[i].a >= 1) SPLASH.splice(i,1); }
+
+  // the sequence owns her sleep: down before it starts, up while it runs, down at the end
+  const busy = dragging || S.mode !== 'rest' || c.puff > .3;
+  const awake = step === 'out' ? busy : (step === 'done' ? false : true);
+  c.wake = awake ? clamp(c.wake + dt*M.wakeSpeed, 0, 1) : clamp(c.wake - dt*M.sleepSpeed, 0, 1);
+
+  // her fur only comes down by hand. before the grooming step it settles by itself.
+  if(step === 'groom') c.puff = lerp(c.puff, 1 - S.strokes/CFG.cat.strokes, Math.min(1, dt*7));
+  else if(!dragging) c.puff = clamp(c.puff - dt*2.4, 0, 1);
+
+  c.purr = Math.max(0, c.purr - dt*1.9);
+  if(c.stretch > 0 && !dragging) c.stretch = Math.max(0, c.stretch - dt*2.4);
+  c.bob = Math.sin(S.t * (c.wake > .5 ? 3.2 : 1.1)) * (c.wake > .5 ? 1.4 : 2.6);
+
+  for(const cl of CLOUD){ cl.x += cl.v*dt*CFG.scene.cloud; if(cl.x - cl.w > W) cl.x = -cl.w; }
+  for(let i=PING.length-1;i>=0;i--){ PING[i].a += dt*1.5; if(PING[i].a >= 1) PING.splice(i,1); }
+  for(let i=SPARK.length-1;i>=0;i--){ SPARK[i].a += dt*1.3; if(SPARK[i].a >= 1) SPARK.splice(i,1); }
 }
 
 // ---- input -----------------------------------------------------------------
-const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.3) < 64*catScale();
-const onFish = p => { if(S.fishEaten) return false;
-                      const f = S.fish, x = f.out ? f.x : TRAY.x, y = f.out ? f.y : TRAY.y;
-                      return Math.hypot(p.x - x, p.y - y) < 40; };
+const near = (p, o, r) => Math.hypot(p.x - o.x, p.y - o.y) < r;
+const onCat  = p => Math.hypot(p.x - S.cat.x, (p.y - S.cat.y)*1.25) < 62*catScale();
+const onFish = p => fishShown() && S.fish.left > .02 && near(p, S.fish, 46*ps());
+const onSun  = p => S.night < .99 && near(p, S.sun, 58*ps());
 const hideTitle = () => { if(!S.touched){ S.touched = true; $('titleG').classList.add('gone'); } };
-const noticed = () => { S.idle = 0; };      // anything you do buys her another ten seconds
+
+function stroke(){
+  const c = S.cat;
+  S.strokes = Math.min(CFG.cat.strokes, S.strokes + 1);
+  c.purr = 1; S.idle = 0;
+  for(let i=0;i<5;i++) SPARK.push({ x: c.x + rnd(-42,42), y: c.y - rnd(4,30), a: rnd(0,.25) });
+}
 
 svg.addEventListener('pointerdown', e => {
   const p = toSvg(e); hideTitle();
+  const step = STEPS[S.hint.step];
 
   // it is over: once she has settled again, a touch anywhere starts the whole thing afresh
-  if(STEPS[S.hint.step] === 'done'){ if(S.cat.wake < .05) window.CATP.reset(); return; }
+  if(step === 'done'){ if(S.cat.wake < .05) window.CATP.reset(); return; }
 
-  if(onFish(p)){
-    if(!allows('fish')) return reject();
-    noticed();
-    S.fish.held = true; S.fish.out = true; S.fish.left = 1;
-    // a plain click drops it just beside the tray — far enough off the ring, near enough
-    // that fetching it does not walk her back out into the rain
-    S.fish.x = S.fish.out && p.x === S.fish.x ? p.x : clamp(TRAY.x - CONE_SPREAD*0.25, 60, W-60);
-    S.fish.y = clamp(TRAY.y + 26, PEN.y0, PEN.y1);
-    svg.setPointerCapture(e.pointerId); return; }
-  if(onCat(p)){
-    if(!allows('cat')) return reject();
-    noticed();
-    S.held = true; S.moved = 0; S.carrying = false;
-    S.cat.puff = Math.min(1, S.cat.puff + .95);
-    S.cat.stretch = 0; S.mode = 'held'; S.target = null;
-    S.grabDX = S.cat.x - p.x; S.grabDY = S.cat.y - p.y;
-    svg.setPointerCapture(e.pointerId);
-    return;
-  }
-  // anywhere else on the street: not part of the sequence, so the street just insists
-  if(p.y > KERB + 20){
-    if(!allows('street')) return reject();
-    noticed();
-    S.mode = 'walk';
-    S.target = { x: clamp(p.x, PEN.x0, PEN.x1), y: clamp(p.y, PEN.y0, PEN.y1) };
-    PING.push({ x: S.target.x, y: S.target.y, a: 0 });
-  }
+  // the grooming step is the one tap in the piece — five of them, and her fur lies flat
+  if(step === 'groom'){ if(onCat(p)) stroke(); else reject(); return; }
+
+  const hit = onSun(p) ? 'sun' : onFish(p) ? 'fish' : onCat(p) ? 'cat' : null;
+  if(!hit || !allows(hit)) return reject();
+
+  const o = hit === 'cat' ? S.cat : hit === 'fish' ? S.fish : S.sun;
+  if(hit === 'cat'){ S.cat.puff = Math.min(1, S.cat.puff + .9); S.mode = 'held'; S.target = null; }
+  if(hit === 'fish'){ S.fish.inDish = false; }
+  if(hit === 'sun'){ S.sun.set = false; }
+  S.drag = { what: hit, dx: o.x - p.x, dy: o.y - p.y, moved: 0 };
+  S.idle = 0;
+  svg.setPointerCapture(e.pointerId);
 });
 
 svg.addEventListener('pointermove', e => {
-  const p = toSvg(e);
-  if(S.fish.held){ noticed(); S.fish.x = clamp(p.x, 30, W-30); S.fish.y = clamp(p.y, PEN.y0-30, FLOOR-24); return; }
-  if(!S.held) return;
-  noticed();
-  const nx = clamp(p.x + S.grabDX, PEN.x0, PEN.x1), ny = clamp(p.y + S.grabDY, PEN.y0, PEN.y1);
-  S.moved += Math.hypot(nx - S.cat.x, ny - S.cat.y);
-  if(S.moved > 10) S.carrying = true;
-  if(Math.abs(nx - S.cat.x) > 1.2) S.cat.face = nx < S.cat.x ? -1 : 1;
-  S.cat.x = nx; S.cat.y = ny;
-  if(S.moved > 14) S.cat.puff = Math.min(S.cat.puff, .35);
+  if(!S.drag) return;
+  const p = toSvg(e), d = S.drag;
+  const nx = p.x + d.dx, ny = p.y + d.dy;
+  if(d.what === 'cat'){
+    const cx = clamp(nx, PEN.x0, PEN.x1), cy = clamp(ny, PEN.y0, PEN.y1);
+    d.moved += Math.hypot(cx - S.cat.x, cy - S.cat.y);
+    if(Math.abs(cx - S.cat.x) > 1.2) S.cat.face = cx < S.cat.x ? -1 : 1;
+    S.cat.x = cx; S.cat.y = cy;
+    if(d.moved > 14) S.cat.puff = Math.min(S.cat.puff, .35);
+  } else if(d.what === 'fish'){
+    d.moved += 1;
+    S.fish.x = clamp(nx, 26, W-26); S.fish.y = clamp(ny, HORIZON + 40, FLOOR - 22);
+  } else {
+    d.moved += 1;
+    S.sun.x = clamp(nx, 40, W-40); S.sun.y = clamp(ny, 90, SLOT.y + 24);
+  }
+  S.idle = 0;
 });
 
 function release(){
-  if(S.fish.held){ S.fish.held = false; return; }
-  if(S.held){ S.held = false; S.carrying = false; S.mode = 'rest'; noticed(); S.cat.stretch = 1; }
+  if(!S.drag) return;
+  const what = S.drag.what, k = ps();
+  S.drag = null;
+  const step = STEPS[S.hint.step];
+
+  if(what === 'cat'){
+    S.mode = 'rest'; S.cat.stretch = 1; S.idle = 0;
+    const d = Math.hypot(S.cat.x - BED.x, S.cat.y - (BED.y - 12));
+    if(step === 'out'){
+      S.inBed = d < 70*k;
+      if(!S.inBed) advance();                       // out of the basket, however far — that is the step
+    } else if(step === 'bed'){
+      if(d < 78*k){                                  // close enough counts: she curls up in it herself
+        S.cat.x = BED.x; S.cat.y = BED.y - 12; S.cat.face = 1;
+        S.inBed = true; S.mode = 'rest'; S.cat.stretch = 0; S.cat.puff = 0;
+        advance();
+      }
+    }
+  } else if(what === 'fish'){
+    if(step === 'feed' && Math.hypot(S.fish.x - DISH.x, S.fish.y - DISH.y) < 52*k){
+      S.fish.x = DISH.x; S.fish.y = DISH.y - 4; S.fish.inDish = true; S.idle = 0;
+    }
+  } else if(what === 'sun'){
+    if(step === 'dusk' && Math.hypot(S.sun.x - SLOT.x, S.sun.y - SLOT.y) < 84*k){
+      S.sun.set = true; S.idle = 0;
+    }
+  }
 }
 addEventListener('pointerup', release);
 addEventListener('pointercancel', release);
@@ -646,8 +673,9 @@ addEventListener('resize', layout);
 // ---- loop ------------------------------------------------------------------
 function applyColors(){
   const r = document.documentElement.style;
-  r.setProperty('--sodium', CFG.colors.sodium);
   r.setProperty('--cat', CFG.colors.cat);
+  r.setProperty('--glow', CFG.colors.glow);
+  r.setProperty('--fish', CFG.colors.fish);
 }
 
 let last = performance.now();
@@ -655,8 +683,9 @@ function frame(now){
   const dt = Math.min(.05, (now - last)/1000); last = now;
   S.t += dt;
   think(dt); hintThink(dt);
-  const d = daylight(), k = duskAmt();
-  applyColors(); drawSky(d, k); drawStreet(d, k); drawHint(d); drawFish(); drawCat(d);
+  applyColors();
+  drawSky(); drawCelestial(); drawField(); drawProps();
+  drawHint(); drawFish(); drawCat(); drawDots();
   $('grainLayer').setAttribute('opacity', CFG.scene.grain);
   requestAnimationFrame(frame);
 }
@@ -664,11 +693,21 @@ layout();
 requestAnimationFrame(frame);
 
 window.CAT  = () => S;
-window.CATP = { CFG, applyColors, dry: dryness, tray: () => TRAY, relayout: layout, setDay: v => { S.day = v; S.drowsy = daylight(); },
-                reset(){ const sp = startSpot();
-                         Object.assign(S.cat, { x: sp.x, y: sp.y, wake: 0, puff: 0, stretch: 0, face: 1 });
-                         S.touched = false; $('titleG').classList.remove('gone');
-                         S.fish.out = false; S.fish.left = 1; S.fishEaten = false; S.mode = 'rest';
-                         S.idle = 999; S.target = null; S.held = S.carrying = false;
-                         S.hint = { step: 0, k: 0, spot: null, sawCarry: false, ping: 0, flare: 0 }; } };
+window.CATP = {
+  skip: () => advance(),
+  CFG, applyColors, relayout: layout,
+  step: () => STEPS[S.hint.step],
+  bed: () => BED, dish: () => DISH, slot: () => SLOT, sun0: () => SUN0, out: () => OUT,
+  fish: () => S.fish, cat: () => S.cat,
+  reset(){
+    Object.assign(S.cat, { x: BED.x, y: BED.y - 12, wake: 0, puff: 0, stretch: 0, face: 1, purr: 0 });
+    Object.assign(S.sun, { x: SUN0.x, y: SUN0.y, set: false });
+    Object.assign(S.fish, { x: FISH0.x, y: FISH0.y, inDish: false, left: 1 });
+    S.night = 0; S.fishEaten = false; S.strokes = 0; S.inBed = true;
+    S.mode = 'rest'; S.target = null; S.drag = null; S.eat = 0; S.idle = 999;
+    S.touched = false; $('titleG').classList.remove('gone');
+    S.hint = { step: 0, k: 0, ping: 0, flare: 0 };
+    PING.length = 0; SPARK.length = 0;
+  }
+};
 })();

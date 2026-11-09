@@ -4,39 +4,65 @@ This repository holds a static GitHub Pages prototype (`index.html` at the root)
 three Week 4 interaction studies in `studies/`. Keep the study folders unchanged — they are
 submitted separately and are deliberately grayscale.
 
-The final prototype is **one continuous scene** that runs a fixed sequence: she is asleep,
-you wake her, you send her out of the rain, you feed her, she lies back down and it is over.
-At each step only that step's own interaction answers; the others are inert until their turn.
-There are still no screens to flip between, no step tracker, no progress indicator, no check
-marks and no success or failure — being "behind" is not a state the piece can be in, and a
-touch at the wrong moment is never an error. It only makes the current suggestion flare.
+The final prototype is **one continuous scene** that runs a fixed sequence of five steps:
+she is asleep in her basket, you lift her out, you put the fish in her dish, you smooth her
+fur down five times, you take the sun out of the sky, and you carry her back to bed. At each
+step only that step's own object answers; the others are inert until their turn. A touch at
+the wrong moment is never an error — it only makes the current suggestion flare.
 
-The subject of the piece is being led. A lit patch of road under the next thing worth
-touching, the street quieting everywhere else, a ripple on bare road and her turning to look
-are the whole vocabulary — there are no words, arrows or buttons, and that restriction is the
-point, not an obstacle to work around. The measure of the piece is whether someone who has
-never seen it gets from start to finish without being told anything, so a suggestion that is
-too faint to act on is a defect, not restraint.
+The subject of the piece is being led. There are no words, arrows or buttons, and that
+restriction is the point, not an obstacle to work around. The measure of the piece is whether
+someone who has never seen it gets from start to finish without being told anything, so a
+suggestion that is too faint to act on is a defect, not restraint.
 
-The scene is night and only night — the day cycle is gone, `S.day` sits at midnight and
-nothing advances it. There is one street lamp, in the middle of the frame, and the cat's
-starting place, the dry patch and the fish tray are all measured off it, so the whole piece
-stays centred at any window size. The cone's width is measured off the frame too: fixed at
-190 it swallowed a phone screen whole and left her nowhere to be rained on.
+## The one suggestion
 
-It rains everywhere except inside the lamp's cone, and that one dry, warm patch is what the
-whole piece turns on: she starts asleep out in the rain, shivers once she is awake and leans
-toward the light, and the second step completes only when she is actually under the lamp. You
-click where she should go and she walks there herself — clicking is something nobody has to be
-taught, which dragging is not — so sending her to the wrong place is allowed and simply leaves
-her in the wet. The fish sits under the lamp too, so feeding her never walks her back out. Walking to a clicked spot still exists in
-the code but no step accepts it, so it never runs. The sequence
-owns her sleep — `CFG.motion.sleepAfter` no longer puts her under mid-sequence, and once she
-has eaten she settles for good. A touch after that starts the whole thing over. Nothing drawn on the cat glows — she is a flat silhouette, and all the light
-in the frame belongs to the lamps, the puddles and the rain.
+Everything the piece says, it says with light. The thing to take hold of is lit brightly;
+the place it should go is lit faintly. Each is a warm pool **plus a rim** — a wash alone
+disappears on pale grass, which is why the rim exists. A ring opens out of the destination
+every couple of seconds so a still frame still reads. The sun, already the brightest thing
+in the sky, gets the same rim rather than more brightness, because "brighter" says nothing
+about the sun. This vocabulary is learned once in step one and then reused four times.
 
-Saved defaults live in `js/config.js`; the "Street tuning" panel (`js/panel.js`) edits a live
-copy of them and never writes to disk.
+The earlier night version dimmed everything except the target. **That does not work in
+daylight — it reads as a fault.** Do not reintroduce it.
+
+## Interaction
+
+Four of the five steps are drags: the cat out of the basket, the fish into the dish, the sun
+into the notch, the cat back to bed. Grooming is the one tap — five taps flatten her fur,
+and her fur going down is the only counter the step needs. Dragging was chosen over clicking
+knowingly: clicking needs no teaching and dragging does, so **if a first-time tester stalls
+on step one, the fix is to go back to click-to-walk**, which is still what `think()` does for
+the walk/run modes.
+
+Dropping something in the wrong place never fails. The cat simply stays where she is put, the
+fish stays on the grass, and the sun floats back up with the morning following it.
+
+## The scene
+
+Day and night both exist now, and the fourth step is what moves between them: `S.night` runs
+0 to 1 and is driven by the sun's height while you hold it, so the sky turns under your hand
+rather than switching. There is a gap in the near treeline at the notch, so the destination
+is a place rather than a smudge.
+
+The horizon sits at 408 — a horizon at the vertical midpoint left the top half an empty
+sky. The basket, dish, landing spot, fish, sun and notch are all measured off the frame
+width, so the piece stays centred and reachable from a phone up to a desktop; a fixed layout
+strands half of it offscreen. Her landing spot for step one is deliberately nowhere near the
+dish, or she ends up standing on her own dinner.
+
+Nothing drawn on the cat glows — she is a flat silhouette and the only true black in the
+frame, day or night. Her raised fur is one zigzag along her back; separate lines read as a
+hairbrush standing beside her.
+
+Five dots across the top track the steps. This was added on request and reverses the earlier
+rule against progress indicators — it does make the piece more legible and slightly more
+like a checklist, and that trade was made deliberately.
+
+Saved defaults live in `js/config.js`; the "Field tuning" panel (`js/panel.js`) edits a live
+copy of them and never writes to disk. `window.CATP` exposes `step()`, `skip()`, `reset()`
+and the positions, which is what the Playwright tests drive.
 
 `index.html` loads the stylesheet and the three scripts itself, appending `?v=<timestamp>` at
 load time, so every visit fetches the current code. Do not replace that with plain `<link>` and
